@@ -1,32 +1,44 @@
-from ursina import *
-from math import *
+import requests
+from sgp4.api import Satrec
+from ursina import Ursina, Entity, EditorCamera, Vec3
+from skyfield.api import load
+import datetime
+
+ts = load.timescale() # sorting out julian date time
+t = ts.tt()
+print(t)
+
+jd = float('{:.10f}'.format(t.tdb))
+
+print(jd)
+
+exit()
+
+KM = 100/12742
+RAD = 50
 
 app = Ursina()
 
-KM = 1/12742
+earth = Entity(model="sphere", texture="earth8k.jpg", scale=100)
 
-def latlon_to_coords(lat, lon, alt, rad):
-    lat = radians(lat)
-    lon = radians(lon)
+result = requests.get("http://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle")
+if result.status_code != 200:
+    raise Exception("Failed to retrive TLE data")
 
-    f  = 0
-    ls = atan((1 - f)**2 * tan(lat))
+text = result.text
+tle = text.split("\r\n")[1:3]
 
-    x = rad * cos(ls) * cos(lon) + alt * cos(lat) * cos(lon)
-    y = rad * cos(ls) * sin(lon) + alt * cos(lat) * sin(lon)
-    z = rad * sin(ls) + alt * sin(lat)
+print("SAT: " + text[0])
 
-    return Vec3(x, y, z)
+satellite = Satrec.twoline2rv(tle[0], tle[1])
 
-def display_point(lat, lon, alt):
-    point = Entity(model="sphere", scale=0.02, position=latlon_to_coords(lat, lon, alt*KM, 0.5))
+fr = 0.0
+e, r, v = satellite.sgp4(jd, fr)
 
-earth = Entity(model="sphere", texture="earth8k.jpg")
-# ref_z = Entity(model="cube", position=Vec3(0, 0, 10), scale=0.2)
+pos = Vec3(r[0]*KM, r[1]*KM, r[2]*KM)
 
-display_point(-2.3, 51.2, 100)
-display_point(0, 0, 100)
+debris = Entity(model="sphere", scale=0.25, position=pos)
 
-EditorCamera()
+EditorCamera(position=Vec3(0, 0, -300))
 
 app.run()
