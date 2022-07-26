@@ -8,9 +8,9 @@ import json
 app = Ursina()
 
 def display_point(lat, lon, alt):
-    return Entity(model="sphere", scale=0.0025, position=latlon_to_coords(lat, lon, alt))
+    return Entity(model="sphere", scale=.25, position=latlon_to_coords(lat, lon, alt))
 
-earth = Entity(model="sphere", texture="earth8k.jpg")
+earth = Entity(model="sphere", texture="earth8k.jpg", scale=100)
 
 iss = display_point(0, 0, 100)
 pos = {"latitude": 0, "longitude": 0, "altitude": 0}
@@ -24,7 +24,6 @@ def get_pos():
             return
         
         pos = result.json()
-        print(pos)
         sleep(1)
 
 def update():
