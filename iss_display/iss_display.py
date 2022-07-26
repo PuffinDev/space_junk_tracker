@@ -1,4 +1,5 @@
-from ursina import Ursina, Entity, EditorCamera
+from turtle import position
+from ursina import Ursina, Entity, EditorCamera, Vec3
 from utils import latlon_to_coords
 from threading import Thread
 from time import sleep
@@ -30,7 +31,7 @@ def update():
     global pos
     iss.position = latlon_to_coords(pos["latitude"], pos["longitude"], pos["altitude"])
 
-EditorCamera()
+EditorCamera(position=Vec3(0, 0, -300))
 
 get_pos_thread = Thread(target=get_pos)
 get_pos_thread.start()
