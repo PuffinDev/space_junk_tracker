@@ -8,7 +8,7 @@ import json
 app = Ursina()
 
 def display_point(lat, lon, alt):
-    return Entity(model="sphere", scale=.25, position=latlon_to_coords(lat, lon, alt))
+    return Entity(model="ISS_stationary.glb", scale=.025, position=latlon_to_coords(lat, lon, alt))
 
 earth = Entity(model="sphere", texture="earth8k.jpg", scale=100)
 
