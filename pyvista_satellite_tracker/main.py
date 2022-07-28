@@ -5,13 +5,25 @@ import pyvista as pv
 from pyvista import examples
 from requests import get
 from datetime import datetime
+from math import sqrt, pi, atan, atan2, asin
+import progressbar
 
-KM = 100/12742
-RAD = 50
+RAD = 1
+KM = (RAD*2)/12742
 
 def split(list_a, chunk_size):
   for i in range(0, len(list_a), chunk_size):
     yield list_a[i:i + chunk_size]
+
+def calculate_dist(point1, point2):
+    x, y, z = point1
+    a, b, c = point2
+    
+    distance = sqrt(pow(a - x, 2) +
+        pow(b - y, 2) +
+        pow(c - z, 2)* 1.0)
+
+    return distance
 
 urls = [
     "http://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris&FORMAT=tle",
@@ -30,14 +42,11 @@ tle_list = tle_text.split("\r\n")
 
 sat_data = list(split(tle_list, 3))
 satellites = [[0.0, 0.0, 0.0] for _ in sat_data[:-1]]
+densities = [0 for _ in sat_data[:-1]]
 
 for i, data in enumerate(sat_data):
     if len(data) < 3:
         sat_data.remove(data)
-    # if "DEB" not in data[0]:
-    #     satellites[i].color = color.red
-    #     satellites[i].scale = .5
-
 
 dt = datetime.now()
 jd, fr = jday_datetime(dt)
@@ -47,10 +56,33 @@ for i, satellite in enumerate(sat_data):
     _, r, _ = sat.sgp4(jd, fr)
     satellites[i] = [r[1]*KM, r[2]*KM, r[0]*KM*-1]
 
+for i in progressbar.progressbar(range(len(satellites))):
+    satellite = satellites[i]
+    for other_satellite in satellites:
+        if calculate_dist(satellite, other_satellite) < KM*1000:
+            densities[i] += 1
 
 points = satellites
-print(points)
 
 point_cloud = pv.PolyData(points)
+point_cloud['point_color'] = densities
 
-point_cloud.plot(eye_dome_lighting=True)
+sphere = pv.Sphere(radius=RAD, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
+sphere.t_coords = np.zeros((sphere.points.shape[0], 2))
+for i in range(sphere.points.shape[0]):
+    sphere.t_coords[i] = [
+        0.5 + atan2(-sphere.points[i, 0], sphere.points[i, RAD])/(2 * pi),
+        0.5 + asin(sphere.points[i, 2])/pi
+    ]
+        
+tex = pv.read_texture("earth2k.jpg")
+
+stars = examples.download_stars_jpg()
+
+plotter = pv.Plotter()
+plotter.add_background_image(stars)
+plotter.add_mesh(sphere, texture=tex)
+plotter.add_mesh(point_cloud)
+plotter.show_axes()
+
+plotter.show()
