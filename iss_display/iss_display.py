@@ -1,10 +1,8 @@
-from turtle import position
 from ursina import Ursina, Entity, EditorCamera, Vec3
 from utils import latlon_to_coords
 from threading import Thread
 from time import sleep
-import requests
-import json
+from requests import get
 
 app = Ursina()
 
@@ -20,7 +18,7 @@ def get_pos():
     global pos
 
     while True:
-        result = requests.get("https://api.wheretheiss.at/v1/satellites/25544")
+        result = get("https://api.wheretheiss.at/v1/satellites/25544")
         if result.status_code != 200:
             return
         
