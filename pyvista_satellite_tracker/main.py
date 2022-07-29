@@ -8,13 +8,15 @@ from datetime import datetime
 from math import sqrt, pi, atan, atan2, asin
 import progressbar
 
-RAD = 1
-KM = (RAD*2)/12742
+RAD = 1 # radius of the globe in visualisation
+KM = (RAD*2)/12742 # kilometer scalar
 
+# splits a list into equal chunks
 def split(list_a, chunk_size):
-  for i in range(0, len(list_a), chunk_size):
-    yield list_a[i:i + chunk_size]
+    for i in range(0, len(list_a), chunk_size):
+        yield list_a[i:i + chunk_size]
 
+# calculates the distance between 2 points in 3d space
 def calculate_dist(point1, point2):
     x, y, z = point1
     a, b, c = point2
@@ -25,6 +27,7 @@ def calculate_dist(point1, point2):
 
     return distance
 
+# tle data
 urls = [
     "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 ]
@@ -38,33 +41,32 @@ for url in urls:
 
 tle_list = tle_text.split("\r\n")
 
-sat_data = list(split(tle_list, 3))
-satellites = [[0.0, 0.0, 0.0] for _ in sat_data]
-densities = [0 for _ in sat_data]
+sat_data = list(split(tle_list, 3)) # Two line element sets in a list [["line1", "line2", "line3"]]
+satellites = [[0.0, 0.0, 0.0] for _ in sat_data] # 3d points
+densities = [0 for _ in sat_data] # density data
 
 for i, data in enumerate(sat_data):
     if len(data) < 3:
-        sat_data.remove(data)
+        sat_data.remove(data) # remove incomplete data
 
 dt = datetime.now()
 jd, fr = jday_datetime(dt)
 
 for i, satellite in enumerate(sat_data):
-    sat = Satrec.twoline2rv(satellite[1], satellite[2])
-    _, r, _ = sat.sgp4(jd, fr)
-    satellites[i] = [r[0]*KM, r[1]*KM, r[2]*KM]
+    sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
+    _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
+    satellites[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
 
 for i in progressbar.progressbar(range(len(satellites))):
     satellite = satellites[i]
     for other_satellite in satellites:
-        if calculate_dist(satellite, other_satellite) < KM*1000:
+        if calculate_dist(satellite, other_satellite) < KM*1000: # search for other satellites within 1000KM
             densities[i] += 1
 
-points = satellites
+point_cloud = pv.PolyData(satellites) # create point cloud
+point_cloud['point_color'] = densities # create color key for densities
 
-point_cloud = pv.PolyData(points)
-point_cloud['point_color'] = densities
-
+# fancy maths stuff
 sphere = pv.Sphere(radius=RAD, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
 sphere.t_coords = np.zeros((sphere.points.shape[0], 2))
 for i in range(sphere.points.shape[0]):
@@ -73,14 +75,14 @@ for i in range(sphere.points.shape[0]):
         0.5 + asin(sphere.points[i, 2])/pi
     ]
 
+# bad attempt at aligning point cloud to the globe
 sphere.rotate_z(40)
 
 tex = pv.read_texture("earth2k.jpg")
-
 stars = examples.download_stars_jpg()
-
 camera = pv.Camera()
 
+# create plotter and add meshes
 plotter = pv.Plotter()
 plotter.add_background_image(stars)
 plotter.add_mesh(sphere, texture=tex)
