@@ -26,10 +26,8 @@ def calculate_dist(point1, point2):
     return distance
 
 urls = [
-    "http://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris&FORMAT=tle",
-    "http://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle",
-    "http://celestrak.org/NORAD/elements/gp.php?GROUP=1999-025&FORMAT=tle",
-    "http://celestrak.org/NORAD/elements/gp.php?GROUP=1982-092&FORMAT=tle"]
+    "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
+]
 
 tle_text = ""
 for url in urls:
@@ -41,8 +39,8 @@ for url in urls:
 tle_list = tle_text.split("\r\n")
 
 sat_data = list(split(tle_list, 3))
-satellites = [[0.0, 0.0, 0.0] for _ in sat_data[:-1]]
-densities = [0 for _ in sat_data[:-1]]
+satellites = [[0.0, 0.0, 0.0] for _ in sat_data]
+densities = [0 for _ in sat_data]
 
 for i, data in enumerate(sat_data):
     if len(data) < 3:
@@ -54,7 +52,7 @@ jd, fr = jday_datetime(dt)
 for i, satellite in enumerate(sat_data):
     sat = Satrec.twoline2rv(satellite[1], satellite[2])
     _, r, _ = sat.sgp4(jd, fr)
-    satellites[i] = [r[1]*KM, r[2]*KM, r[0]*KM*-1]
+    satellites[i] = [r[0]*KM, r[1]*KM, r[2]*KM]
 
 for i in progressbar.progressbar(range(len(satellites))):
     satellite = satellites[i]
@@ -74,15 +72,20 @@ for i in range(sphere.points.shape[0]):
         0.5 + atan2(-sphere.points[i, 0], sphere.points[i, RAD])/(2 * pi),
         0.5 + asin(sphere.points[i, 2])/pi
     ]
-        
+
+sphere.rotate_z(40)
+
 tex = pv.read_texture("earth2k.jpg")
 
 stars = examples.download_stars_jpg()
+
+camera = pv.Camera()
 
 plotter = pv.Plotter()
 plotter.add_background_image(stars)
 plotter.add_mesh(sphere, texture=tex)
 plotter.add_mesh(point_cloud)
 plotter.show_axes()
+plotter.camera.focal_point = (0.0, 0.0, 0.0)
 
 plotter.show()
