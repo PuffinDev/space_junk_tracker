@@ -2,11 +2,12 @@ import numpy as np
 from sgp4.api import Satrec, jday
 from sgp4.conveniences import jday_datetime
 import pyvista as pv
-from pyvista import examples
+from pyvistaqt import BackgroundPlotter
 from requests import get
 from datetime import datetime
 from math import sqrt, pi, atan, atan2, asin
 import progressbar
+import time
 
 RAD = 1 # radius of the globe in visualisation
 KM = (RAD*2)/12742 # kilometer scalar
@@ -79,11 +80,11 @@ for i in range(sphere.points.shape[0]):
 sphere.rotate_z(40)
 
 tex = pv.read_texture("earth2k.jpg")
-stars = examples.download_stars_jpg()
+stars = pv.examples.download_stars_jpg()
 camera = pv.Camera()
 
 # create plotter and add meshes
-plotter = pv.Plotter()
+plotter = BackgroundPlotter()
 plotter.add_background_image(stars)
 plotter.add_mesh(sphere, texture=tex)
 plotter.add_mesh(point_cloud)
