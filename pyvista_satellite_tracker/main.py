@@ -43,24 +43,28 @@ def get_sat_data(url_list):
 
 data_urls = [
         "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
-    ]
+]
+
 sat_data = get_sat_data(data_urls)
 satellites = [[0.0, 0.0, 0.0] for _ in sat_data] # 3d points
 densities = [0 for _ in sat_data] # density data
 
-dt = datetime.now()
-jd, fr = jday_datetime(dt)
+def update_positions():
+    dt = datetime.now()
+    jd, fr = jday_datetime(dt)
 
-for i, satellite in enumerate(sat_data):
-    sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
-    _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
-    satellites[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
+    for i, satellite in enumerate(sat_data):
+        sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
+        _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
+        satellites[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
 
 for i in progressbar.progressbar(range(len(satellites))):
     satellite = satellites[i]
     for other_satellite in satellites:
         if calculate_dist(satellite, other_satellite) < KM*1000: # search for other satellites within 1000KM
             densities[i] += 1
+
+update_positions()
 
 point_cloud = pv.PolyData(satellites) # create point cloud
 point_cloud['point_color'] = densities # create color key for densities
@@ -85,8 +89,17 @@ camera = pv.Camera()
 plotter = BackgroundPlotter()
 plotter.add_background_image(stars)
 plotter.add_mesh(sphere, texture=tex)
-plotter.add_mesh(point_cloud)
+point_cloud = pv.PolyData(satellites)
+point_cloud_actor = plotter.add_mesh(point_cloud)
 plotter.show_axes()
 plotter.camera.focal_point = (0.0, 0.0, 0.0)
 
 plotter.show()
+
+while True:
+    update_positions()
+    plotter.remove_actor(point_cloud_actor) # temporary hack - remove the polydata, re-init and add
+    point_cloud = pv.PolyData(satellites)
+    point_cloud_actor = plotter.add_mesh(point_cloud)
+    plotter.render()
+    plotter.app.processEvents()
