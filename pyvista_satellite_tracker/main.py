@@ -41,11 +41,11 @@ def get_sat_data(url_list):
             sat_data.remove(data) # remove incomplete data
     return sat_data
 
-data_urls = [
+TLE_URLS = [
         "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 ]
 
-sat_data = get_sat_data(data_urls)
+sat_data = get_sat_data(TLE_URLS)
 satellites = [[0.0, 0.0, 0.0] for _ in sat_data] # 3d points
 densities = [0 for _ in sat_data] # density data
 
@@ -58,13 +58,15 @@ def update_positions():
         _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
         satellites[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
 
-for i in progressbar.progressbar(range(len(satellites))):
-    satellite = satellites[i]
-    for other_satellite in satellites:
-        if calculate_dist(satellite, other_satellite) < KM*1000: # search for other satellites within 1000KM
-            densities[i] += 1
+def update_densities():
+    for i in progressbar.progressbar(range(len(satellites))):
+        satellite = satellites[i]
+        for other_satellite in satellites:
+            if calculate_dist(satellite, other_satellite) < KM*1000: # search for other satellites within 1000KM
+                densities[i] += 1
 
 update_positions()
+update_densities()
 
 point_cloud = pv.PolyData(satellites) # create point cloud
 point_cloud['point_color'] = densities # create color key for densities
