@@ -9,8 +9,8 @@ from math import sqrt, pi, atan, atan2, asin
 import progressbar
 import time
 
-RAD = 1 # radius of the globe in visualisation
-KM = (RAD*2)/12742 # kilometer scalar
+RADIUS = 1 # radius of the globe in visualisation - RAD is a unit of measurement Radian, so renamed to RADIUS
+KM = (RADIUS*2)/12742 # kilometer scalar
 
 # splits a list into equal chunks
 def split(list_a, chunk_size):
@@ -21,34 +21,32 @@ def split(list_a, chunk_size):
 def calculate_dist(point1, point2):
     x, y, z = point1
     a, b, c = point2
-    
     distance = sqrt(pow(a - x, 2) +
         pow(b - y, 2) +
         pow(c - z, 2)* 1.0)
-
     return distance
 
-# tle data
-urls = [
-    "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
-]
+def get_sat_data(url_list):
+    urls = url_list
+    tle_text = ""
+    for url in urls:
+        result = get(url)
+        if result.status_code != 200:
+            raise Exception("Failed to retrive TLE data")
+        tle_text += result.text
+    tle_list = tle_text.split("\r\n")
+    sat_data = list(split(tle_list, 3)) # Two line element sets in a list [["line1", "line2", "line3"]]
+    for data in sat_data:
+        if len(data) < 3:
+            sat_data.remove(data) # remove incomplete data
+    return sat_data
 
-tle_text = ""
-for url in urls:
-    result = get(url)
-    if result.status_code != 200:
-        raise Exception("Failed to retrive TLE data")
-    tle_text += result.text
-
-tle_list = tle_text.split("\r\n")
-
-sat_data = list(split(tle_list, 3)) # Two line element sets in a list [["line1", "line2", "line3"]]
+data_urls = [
+        "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
+    ]
+sat_data = get_sat_data(data_urls)
 satellites = [[0.0, 0.0, 0.0] for _ in sat_data] # 3d points
 densities = [0 for _ in sat_data] # density data
-
-for i, data in enumerate(sat_data):
-    if len(data) < 3:
-        sat_data.remove(data) # remove incomplete data
 
 dt = datetime.now()
 jd, fr = jday_datetime(dt)
@@ -67,12 +65,12 @@ for i in progressbar.progressbar(range(len(satellites))):
 point_cloud = pv.PolyData(satellites) # create point cloud
 point_cloud['point_color'] = densities # create color key for densities
 
-# fancy maths stuff
-sphere = pv.Sphere(radius=RAD, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
+# generate mesh sphere to hold earth image
+sphere = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
 sphere.t_coords = np.zeros((sphere.points.shape[0], 2))
 for i in range(sphere.points.shape[0]):
     sphere.t_coords[i] = [
-        0.5 + atan2(-sphere.points[i, 0], sphere.points[i, RAD])/(2 * pi),
+        0.5 + atan2(-sphere.points[i, 0], sphere.points[i, RADIUS])/(2 * pi),
         0.5 + asin(sphere.points[i, 2])/pi
     ]
 

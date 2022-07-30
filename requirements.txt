@@ -4,3 +4,4 @@ pyvista
 progressbar2
 sgp4
 numpy
+pyqt5
