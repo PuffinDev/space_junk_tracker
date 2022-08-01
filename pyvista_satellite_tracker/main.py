@@ -91,8 +91,7 @@ camera = pv.Camera()
 plotter = BackgroundPlotter()
 plotter.add_background_image(stars)
 plotter.add_mesh(sphere, texture=tex)
-point_cloud = pv.PolyData(satellites)
-point_cloud_actor = plotter.add_mesh(point_cloud)
+plotter.add_mesh(point_cloud)
 plotter.show_axes()
 plotter.camera.focal_point = (0.0, 0.0, 0.0)
 
@@ -100,8 +99,6 @@ plotter.show()
 
 while True:
     update_positions()
-    plotter.remove_actor(point_cloud_actor) # temporary hack - remove the polydata, re-init and add
-    point_cloud = pv.PolyData(satellites)
-    point_cloud_actor = plotter.add_mesh(point_cloud)
+    point_cloud.points = satellites
     plotter.render()
     plotter.app.processEvents()
