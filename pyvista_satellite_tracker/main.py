@@ -13,6 +13,10 @@ import time
 RADIUS = 1 # radius of the globe in visualisation - RAD is a unit of measurement Radian, so renamed to RADIUS
 KM = (RADIUS*2)/12742 # kilometer scalar
 
+TLE_URLS = [
+        "https://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=tle"
+]
+
 # splits a list into equal chunks
 def split(list_a, chunk_size):
     for i in range(0, len(list_a), chunk_size):
@@ -42,15 +46,9 @@ def get_sat_data(url_list):
             sat_data.remove(data) # remove incomplete data
     return sat_data
 
-TLE_URLS = [
-        "https://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=tle"
-]
+def calculate_positions(sat_data):
+    satellites = [[0.0, 0.0, 0.0] for _ in sat_data]
 
-sat_data = get_sat_data(TLE_URLS)
-satellites = [[0.0, 0.0, 0.0] for _ in sat_data] # 3d points
-densities = [0 for _ in sat_data] # density data
-
-def update_positions():
     dt = datetime.now()
     jd, fr = jday_datetime(dt)
 
@@ -58,55 +56,53 @@ def update_positions():
         sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
         _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
         satellites[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
+    
+    return satellites
 
-def update_densities():
-    global densities
+def calculate_densities(satellites):
+    densities = [0 for _ in sat_data]
 
     for i in range(len(satellites)):
         satellite = satellites[i]
         for other_satellite in satellites:
             if calculate_dist(satellite, other_satellite) < KM*1000: # search for other satellites within 1000KM
                 densities[i] += 1
+    
+    return densities
 
-update_positions()
+if __name__ == "__main__":
+    sat_data = get_sat_data(TLE_URLS)
+    satellites = calculate_positions(sat_data)
 
-point_cloud = pv.PolyData(satellites) # create point cloud
-# point_cloud['point_color'] = densities
+    point_cloud = pv.PolyData(satellites) # create point cloud
 
-def density_update_thread():
+    # generate mesh sphere to hold earth image
+    sphere = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
+    sphere.t_coords = np.zeros((sphere.points.shape[0], 2))
+    for i in range(sphere.points.shape[0]):
+        sphere.t_coords[i] = [
+            0.5 + atan2(-sphere.points[i, 0], sphere.points[i, RADIUS])/(2 * pi),
+            0.5 + asin(sphere.points[i, 2])/pi
+        ]
+
+    # bad attempt at aligning point cloud to the globe
+    sphere.rotate_z(40)
+
+    tex = pv.read_texture("earth2k.jpg")
+    stars = pv.examples.download_stars_jpg()
+    camera = pv.Camera()
+
+    # create plotter and add meshes
+    plotter = BackgroundPlotter()
+    plotter.add_background_image(stars)
+    plotter.add_mesh(sphere, texture=tex)
+    plotter.add_mesh(point_cloud)
+    plotter.show_axes()
+    plotter.camera.focal_point = (0.0, 0.0, 0.0)
+
+    plotter.show()
+
     while True:
-        update_densities()
-
-# generate mesh sphere to hold earth image
-sphere = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
-sphere.t_coords = np.zeros((sphere.points.shape[0], 2))
-for i in range(sphere.points.shape[0]):
-    sphere.t_coords[i] = [
-        0.5 + atan2(-sphere.points[i, 0], sphere.points[i, RADIUS])/(2 * pi),
-        0.5 + asin(sphere.points[i, 2])/pi
-    ]
-
-# bad attempt at aligning point cloud to the globe
-sphere.rotate_z(40)
-
-tex = pv.read_texture("earth2k.jpg")
-stars = pv.examples.download_stars_jpg()
-camera = pv.Camera()
-
-# create plotter and add meshes
-plotter = BackgroundPlotter()
-plotter.add_background_image(stars)
-plotter.add_mesh(sphere, texture=tex)
-plotter.add_mesh(point_cloud)
-plotter.show_axes()
-plotter.camera.focal_point = (0.0, 0.0, 0.0)
-
-plotter.show()
-
-# thread = Thread(target=density_update_thread)
-# thread.start()
-
-while True:
-    update_positions()
-    point_cloud.points = satellites
-    plotter.app.processEvents()
+        satellites = calculate_positions(sat_data)
+        point_cloud.points = satellites
+        plotter.app.processEvents()
