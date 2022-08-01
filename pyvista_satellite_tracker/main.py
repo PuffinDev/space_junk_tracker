@@ -6,6 +6,7 @@ from pyvistaqt import BackgroundPlotter
 from requests import get
 from datetime import datetime
 from math import sqrt, pi, atan, atan2, asin
+from threading import Thread
 import progressbar
 import time
 
@@ -42,7 +43,7 @@ def get_sat_data(url_list):
     return sat_data
 
 TLE_URLS = [
-        "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
+        "https://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=tle"
 ]
 
 sat_data = get_sat_data(TLE_URLS)
@@ -59,17 +60,22 @@ def update_positions():
         satellites[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
 
 def update_densities():
-    for i in progressbar.progressbar(range(len(satellites))):
+    global densities
+
+    for i in range(len(satellites)):
         satellite = satellites[i]
         for other_satellite in satellites:
             if calculate_dist(satellite, other_satellite) < KM*1000: # search for other satellites within 1000KM
                 densities[i] += 1
 
 update_positions()
-update_densities()
 
 point_cloud = pv.PolyData(satellites) # create point cloud
-point_cloud['point_color'] = densities # create color key for densities
+# point_cloud['point_color'] = densities
+
+def density_update_thread():
+    while True:
+        update_densities()
 
 # generate mesh sphere to hold earth image
 sphere = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
@@ -97,8 +103,10 @@ plotter.camera.focal_point = (0.0, 0.0, 0.0)
 
 plotter.show()
 
+# thread = Thread(target=density_update_thread)
+# thread.start()
+
 while True:
     update_positions()
     point_cloud.points = satellites
-    plotter.render()
     plotter.app.processEvents()
