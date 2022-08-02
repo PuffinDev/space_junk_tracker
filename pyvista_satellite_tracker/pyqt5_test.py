@@ -1,5 +1,5 @@
 import numpy as np
-from sgp4.api import Satrec, jday
+from sgp4.api import Satrec
 from sgp4.conveniences import jday_datetime
 import pyvista as pv
 from pyvistaqt import BackgroundPlotter, QtInteractor, MainWindow
@@ -21,6 +21,7 @@ TLE_URLS = [
         "https://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=tle"
 ]
 PLANET_TEXTURE = "pyvista_satellite_tracker/earth2k.jpg"
+
 class App(MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
@@ -36,14 +37,7 @@ class App(MainWindow):
 
         self.frame.setLayout(vlayout)
         self.setCentralWidget(self.frame)
-
-        # simple menu to demo functions
-        mainMenu = self.menuBar()
-        fileMenu = mainMenu.addMenu('File')
-        exitButton = QtWidgets.QAction('Exit', self)
-        exitButton.setShortcut('Ctrl+Q')
-        exitButton.triggered.connect(self.close)
-        fileMenu.addAction(exitButton)
+        self.build_menus()
 
         self.sat_data = self.get_sat_data(TLE_URLS) # base satellite data
         self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
@@ -57,6 +51,15 @@ class App(MainWindow):
         while True:
             self.point_cloud.points = self.calculate_positions()
             #self.plotter.app.processEvents() # needs the QTInteractor event processor
+
+    def build_menus(self):
+        # simple menu to demo functions
+        mainMenu = self.menuBar()
+        fileMenu = mainMenu.addMenu('File')
+        exitButton = QtWidgets.QAction('Exit', self)
+        exitButton.setShortcut('Ctrl+Q')
+        exitButton.triggered.connect(self.close)
+        fileMenu.addAction(exitButton)
 
     def setup_earth(self):
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
