@@ -110,7 +110,7 @@ class App(MainWindow):
         return sat_data
 
     def calculate_positions(self):
-        sat_pos_list = [[0.0, 0.0, 0.0] for _ in self.sat_data]
+        sat_pos_list = [[0.0, 0.0, 0.0] for _ in range(len(self.sat_data))]
 
         dt = datetime.now()
         jd, fr = jday_datetime(dt)
