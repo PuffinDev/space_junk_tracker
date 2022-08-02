@@ -20,7 +20,7 @@ KM = (RADIUS*2)/12742 # kilometer scalar
 TLE_URLS = [
         "https://celestrak.org/NORAD/elements/gp.php?GROUP=analyst&FORMAT=tle"
 ]
-PLANET_TEXTURE = "pyvista_satellite_tracker/earth2k.jpg"
+PLANET_TEXTURE = "resources/earth2k.jpg"
 
 class App(MainWindow):
     def __init__(self, parent=None):
