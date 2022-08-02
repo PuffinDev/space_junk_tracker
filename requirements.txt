@@ -1,2 +1,9 @@
 ursina
 screeninfo
+pyvista
+pyvistaqt
+progressbar2
+sgp4
+numpy
+pyqt5
+qtpy
