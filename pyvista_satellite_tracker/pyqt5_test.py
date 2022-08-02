@@ -18,7 +18,7 @@ RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measur
 KM = (RADIUS*2)/12742 # kilometer scalar
 
 TLE_URLS = [
-        "https://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=tle"
+        "https://celestrak.org/NORAD/elements/gp.php?GROUP=analyst&FORMAT=tle"
 ]
 PLANET_TEXTURE = "pyvista_satellite_tracker/earth2k.jpg"
 
@@ -29,15 +29,23 @@ class App(MainWindow):
 
         self.sat_data = self.get_sat_data(TLE_URLS) # base satellite data
         self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
+        self.densities = self.calculate_densities()
+        self.point_cloud['point_color'] = self.densities
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
 
-        thread = Thread(target=self.update)
-        thread.start()
+        Thread(target=self.update).start()
+        Thread(target=self.density_update_thread).start()
+
     
     def update(self):
         while True:
             self.point_cloud.points = self.calculate_positions()
-            #self.plotter.app.processEvents() # needs the QTInteractor event processor
+            self.plotter.update()
+    
+    def density_update_thread(self):
+        while True:
+            self.densities = self.calculate_densities()
+            self.point_cloud['point_color'][:] = self.densities
 
     def setup_qt_frame(self):
         # create the frame
@@ -125,15 +133,15 @@ class App(MainWindow):
             sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
             _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
             sat_pos_list[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
-        
+
         return sat_pos_list
 
-    def calculate_densities(self, satellites):
+    def calculate_densities(self):
         densities = [0 for _ in self.sat_data]
 
-        for i in range(len(satellites)):
-            satellite = satellites[i]
-            for other_satellite in satellites:
+        for i in range(len(self.point_cloud.points)):
+            satellite = self.point_cloud.points[i]
+            for other_satellite in self.point_cloud.points:
                 if self.calculate_dist(satellite, other_satellite) < KM*1000: # search for other satellites within 1000KM
                     densities[i] += 1
         
