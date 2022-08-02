@@ -44,7 +44,7 @@ def calculate_positions(sat_data):
         try:
             floor(r[0]) # test for nan in data set
             sat_pos_list[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
-            if calculate_dist( (0, 0, 0), sat_pos_list[i]) > sat_dist:
+            if calculate_dist( (0, 0, 0), sat_pos_list[i]) > sat_dist: # find max dist from earth core
                 sat_dist = ceil(calculate_dist( (0, 0, 0), sat_pos_list[i]))
         except:
             pass
@@ -53,10 +53,12 @@ def calculate_positions(sat_data):
     return sat_pos_list, boxy_list
 
 def boxy_space(size, point_list):
+    # divide our 'space' in to 3D grid using max range as basic unit
     boxy_list = [[[[] for _ in range(size)] for _ in range(size)] for _ in range(size)]
     for sat in point_list:
         x, y, z = sat
         boxy_list[floor(x)][floor(y)][floor(z)].append(sat)
+    # most cells will be empty
     return boxy_list
 
 def calculate_dist(point1, point2):
@@ -104,7 +106,9 @@ def boxy_densities(boxy_points, point_cloud):
     for i in progressbar.progressbar(range(len(point_cloud.points))):
         satellite = point_cloud.points[i]
         x, y, z = satellite
+        # convert x, y, z into a box sub-list of satellites
         space_box = boxy_points[floor(x)][floor(y)][floor(z)]
+        # now we check against the other satellites in our 'box' rather than the whole list
         for other_satellite in space_box:
             if calculate_dist(satellite, other_satellite) < density_range: # search for other satellites within 1000KM
                 densities[i] += 1
