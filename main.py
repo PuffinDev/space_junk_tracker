@@ -17,17 +17,20 @@ os.environ["QT_API"] = "pyqt5"
 RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measurement Radian, so renamed to RADIUS
 KM = (RADIUS*2)/12742 # kilometer scalar
 
-TLE_URLS = [
-        "https://celestrak.org/NORAD/elements/gp.php?GROUP=analyst&FORMAT=tle"
+TLE_DATASETS = [
+        ["https://celestrak.org/NORAD/elements/gp.php?GROUP=analyst&FORMAT=tle"],
+        ["http://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=tle"],
+        ["http://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle"]
 ]
 PLANET_TEXTURE = "resources/earth2k.jpg"
 
 class App(MainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, datasets, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.setup_qt_frame()
-
-        self.sat_data = self.get_sat_data(TLE_URLS) # base satellite data
+        self.datasets = datasets
+        self.dataset_index = 0
+        self.sat_data = self.get_sat_data(self.dataset)
         self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
         self.densities = self.calculate_densities()
         self.point_cloud['point_color'] = self.densities
@@ -35,12 +38,24 @@ class App(MainWindow):
 
         Thread(target=self.update).start()
         Thread(target=self.density_update_thread).start()
-
     
+    @property
+    def dataset(self):
+        return self.datasets[self.dataset_index]
+
     def update(self):
         while True:
             self.point_cloud.points = self.calculate_positions()
             self.plotter.update()
+
+    def change_dataset(self):
+        if len(self.datasets) <= self.dataset_index:
+            self.dataset_index = 0
+        else:
+            self.dataset_index += 1
+
+        self.sat_data = self.get_sat_data(self.dataset)
+        print("Changed dataset")
     
     def density_update_thread(self):
         while True:
@@ -63,12 +78,20 @@ class App(MainWindow):
 
     def build_menus(self):
         # simple menu to demo functions
-        mainMenu = self.menuBar()
-        fileMenu = mainMenu.addMenu('File')
-        exitButton = QtWidgets.QAction('Exit', self)
-        exitButton.setShortcut('Ctrl+Q')
-        exitButton.triggered.connect(self.close)
-        fileMenu.addAction(exitButton)
+        main_menu = self.menuBar()
+
+        file_menu = main_menu.addMenu('File')
+        exit_button = QtWidgets.QAction('Exit', self)
+        exit_button.setShortcut('Ctrl+Q')
+        exit_button.triggered.connect(self.close)
+        file_menu.addAction(exit_button)
+
+        dataset_menu = main_menu.addMenu("Dataset")
+        change_dataset_button = QtWidgets.QAction('Change Dataset', self)
+        change_dataset_button.setShortcut("Ctrl+D")
+        change_dataset_button.triggered.connect(self.change_dataset)
+        dataset_menu.addAction(change_dataset_button)
+
 
     def setup_earth(self):
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
@@ -79,7 +102,6 @@ class App(MainWindow):
                 0.5 + asin(temp_globe.points[i, 2])/pi
             ]
         # bad attempt at aligning point cloud to the sphere
-        temp_globe.rotate_z(40)
         return temp_globe
 
     def setup_plotter(self, globe):
@@ -149,6 +171,6 @@ class App(MainWindow):
 
 if __name__ == "__main__":
     qtapp = QtWidgets.QApplication(sys.argv)
-    app = App()
+    app = App(TLE_DATASETS)
     app.show()
     sys.exit(qtapp.exec_())
