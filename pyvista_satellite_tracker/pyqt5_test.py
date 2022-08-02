@@ -45,32 +45,10 @@ class App(MainWindow):
         exitButton.triggered.connect(self.close)
         fileMenu.addAction(exitButton)
 
-        self.sat_data = self.get_sat_data(TLE_URLS)
-        sat_pos = self.calculate_positions()
-        self.point_cloud = pv.PolyData(sat_pos) # create point cloud
+        self.sat_data = self.get_sat_data(TLE_URLS) # base satellite data
+        self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
 
-        # generate mesh sphere to hold earth image
-        self.globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
-        self.globe.t_coords = np.zeros((self.globe.points.shape[0], 2))
-        for i in range(self.globe.points.shape[0]):
-            self.globe.t_coords[i] = [
-                0.5 + atan2(-self.globe.points[i, 0], self.globe.points[i, RADIUS])/(2 * pi),
-                0.5 + asin(self.globe.points[i, 2])/pi
-            ]
-
-        # bad attempt at aligning point cloud to the sphere
-        self.globe.rotate_z(40)
-
-        tex = pv.read_texture(PLANET_TEXTURE)
-        stars = pv.examples.download_stars_jpg()
-        self.camera = pv.Camera()
-
-        # create plotter and add meshes
-        self.plotter.add_background_image(stars)
-        self.plotter.add_mesh(self.globe, texture=tex)
-        self.plotter.add_mesh(self.point_cloud)
-        self.plotter.show_axes()
-        self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
+        self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
 
         thread = Thread(target=self.update)
         thread.start()
@@ -78,7 +56,31 @@ class App(MainWindow):
     def update(self):
         while True:
             self.point_cloud.points = self.calculate_positions()
-            self.plotter.app.processEvents()
+            #self.plotter.app.processEvents() # needs the QTInteractor event processor
+
+    def setup_earth(self):
+        temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
+        temp_globe.t_coords = np.zeros((temp_globe.points.shape[0], 2))
+        for i in range(temp_globe.points.shape[0]):
+            temp_globe.t_coords[i] = [
+                0.5 + atan2(-temp_globe.points[i, 0], temp_globe.points[i, RADIUS])/(2 * pi),
+                0.5 + asin(temp_globe.points[i, 2])/pi
+            ]
+        # bad attempt at aligning point cloud to the sphere
+        temp_globe.rotate_z(40)
+        return temp_globe
+
+    def setup_plotter(self, globe):
+        tex = pv.read_texture(PLANET_TEXTURE)
+        stars = pv.examples.download_stars_jpg()
+        self.camera = pv.Camera()
+
+        # create plotter and add meshes
+        self.plotter.add_background_image(stars)
+        self.plotter.add_mesh(globe, texture=tex)
+        self.plotter.add_mesh(self.point_cloud)
+        self.plotter.show_axes()
+        self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
 
     # splits a list into equal chunks
     def split_tle(self, list_a, chunk_size):
