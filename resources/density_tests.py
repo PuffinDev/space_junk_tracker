@@ -3,7 +3,7 @@ from sgp4.api import Satrec
 from sgp4.conveniences import jday_datetime
 from requests import get
 from datetime import datetime
-from math import sqrt, pi, atan, atan2, asin
+from math import ceil, floor, sqrt, pi, atan, atan2, asin
 import progressbar
 
 RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measurement Radian, so renamed to RADIUS
@@ -33,7 +33,7 @@ def get_sat_data(url_list):
 
 def calculate_positions(sat_data):
     sat_pos_list = [[0.0, 0.0, 0.0] for _ in range(len(sat_data))]
-
+    sat_dist = 0
     dt = datetime.now()
     jd, fr = jday_datetime(dt)
     print('plot points')
@@ -41,9 +41,23 @@ def calculate_positions(sat_data):
         satellite = sat_data[i]
         sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
         _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
-        sat_pos_list[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
+        try:
+            floor(r[0]) # test for nan in data set
+            sat_pos_list[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
+            if calculate_dist( (0, 0, 0), sat_pos_list[i]) > sat_dist:
+                sat_dist = ceil(calculate_dist( (0, 0, 0), sat_pos_list[i]))
+        except:
+            pass
 
-    return sat_pos_list
+    boxy_list = boxy_space(sat_dist, sat_pos_list)
+    return sat_pos_list, boxy_list
+
+def boxy_space(size, point_list):
+    boxy_list = [[[[] for _ in range(size)] for _ in range(size)] for _ in range(size)]
+    for sat in point_list:
+        x, y, z = sat
+        boxy_list[floor(x)][floor(y)][floor(z)].append(sat)
+    return boxy_list
 
 def calculate_dist(point1, point2):
     x, y, z = point1
@@ -83,14 +97,28 @@ def calculate_densities_cube_approx(point_cloud):
                 densities[i] += 1
     return densities
 
+def boxy_densities(boxy_points, point_cloud):
+    densities = [0 for _ in point_cloud.points]
+    density_range = KM*1000 # scaled range for our model
+    print('boxy')
+    for i in progressbar.progressbar(range(len(point_cloud.points))):
+        satellite = point_cloud.points[i]
+        x, y, z = satellite
+        space_box = boxy_points[floor(x)][floor(y)][floor(z)]
+        for other_satellite in space_box:
+            if calculate_dist(satellite, other_satellite) < density_range: # search for other satellites within 1000KM
+                densities[i] += 1
+    return densities
+
 def run():
     print('get data')
     sat_data = get_sat_data(TLE_URLS) # base satellite data
+    all_points, boxy_points = calculate_positions(sat_data)
     print('start processing')
-    point_cloud = pv.PolyData(calculate_positions(sat_data)) # create point cloud
+    point_cloud = pv.PolyData(all_points) # create point cloud
+    point_cloud['point_color'] = boxy_densities(boxy_points, point_cloud)
     point_cloud['point_color'] = calculate_densities_accurate(point_cloud)
     point_cloud['point_color'] = calculate_densities_cube_approx(point_cloud)
-
 
 if __name__ == "__main__":
     run()
