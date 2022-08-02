@@ -52,12 +52,14 @@ def calculate_positions(sat_data):
     boxy_list = boxy_space(sat_dist, sat_pos_list)
     return sat_pos_list, boxy_list
 
-def boxy_space(size, point_list):
+def boxy_space(max_dist, point_list):
     # divide our 'space' in to 3D grid using max range as basic unit
-    boxy_list = [[[[] for _ in range(size + 1)] for _ in range(size + 1)] for _ in range(size + 1)]
+    mid_point = ceil(max_dist)
+    boxy_list = [[[[] for _ in range(mid_point*2 + 1)] for _ in range(mid_point*2 + 1)] for _ in range(mid_point*2 + 1)]
     for sat in point_list:
         x, y, z = sat
-        boxy_list[floor(x)][floor(y)][floor(z)].append(sat)
+        # normalised around (0, 0, 0) space coords = (size, size, size) box coords
+        boxy_list[floor(mid_point + x)][floor(mid_point + y)][floor(mid_point + z)].append(sat)
     # most cells will be empty
     return boxy_list
 
@@ -103,18 +105,19 @@ def boxy_densities(boxy_points, point_cloud):
     densities = [0 for _ in point_cloud.points]
     density_range = KM*1000 # scaled range for our model
     print('boxy')
+    mid_point = int(len(boxy_points) / 2)
     for i in progressbar.progressbar(range(len(point_cloud.points))):
         satellite = point_cloud.points[i]
         x, y, z = satellite
-        space_box = boxy_points[floor(x)][floor(y)][floor(z)]
+        space_box = boxy_points[floor(mid_point + x)][floor(mid_point + y)][floor(mid_point + z)]
         # we should probably also check adjoining boxes... not sure how yet
-        # this is not it - turns a run time of 4s into +40min
-        """         
+        # this is not it - turns a run time of 4s into +hrs
+        '''
         for i in range(-1, 2):
             for j in range(-1, 2):
                 for k in range(-1, 2):
-                    space_box.extend(boxy_points[floor(x + i)][floor(y + j)][floor(z + k)])
-        """        
+                    space_box.extend(boxy_points[floor(mid_point + x + i)][floor(mid_point + y + j)][floor(mid_point + z + k)])
+        '''
         for other_satellite in space_box:
             if calculate_dist(satellite, other_satellite) < density_range: # search for other satellites within 1000KM
                 densities[i] += 1
