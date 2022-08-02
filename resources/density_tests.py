@@ -48,13 +48,13 @@ def calculate_positions(sat_data):
                 sat_dist = ceil(calculate_dist( (0, 0, 0), sat_pos_list[i]))
         except:
             pass
-
+    # it would be good to only update boxy_space when a satellite moves between boxes, but that might be a bit complicated
     boxy_list = boxy_space(sat_dist, sat_pos_list)
     return sat_pos_list, boxy_list
 
 def boxy_space(size, point_list):
     # divide our 'space' in to 3D grid using max range as basic unit
-    boxy_list = [[[[] for _ in range(size)] for _ in range(size)] for _ in range(size)]
+    boxy_list = [[[[] for _ in range(size + 1)] for _ in range(size + 1)] for _ in range(size + 1)]
     for sat in point_list:
         x, y, z = sat
         boxy_list[floor(x)][floor(y)][floor(z)].append(sat)
@@ -106,9 +106,15 @@ def boxy_densities(boxy_points, point_cloud):
     for i in progressbar.progressbar(range(len(point_cloud.points))):
         satellite = point_cloud.points[i]
         x, y, z = satellite
-        # convert x, y, z into a box sub-list of satellites
         space_box = boxy_points[floor(x)][floor(y)][floor(z)]
-        # now we check against the other satellites in our 'box' rather than the whole list
+        # we should probably also check adjoining boxes... not sure how yet
+        # this is not it - turns a run time of 4s into +40min
+        """         
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                for k in range(-1, 2):
+                    space_box.extend(boxy_points[floor(x + i)][floor(y + j)][floor(z + k)])
+        """        
         for other_satellite in space_box:
             if calculate_dist(satellite, other_satellite) < density_range: # search for other satellites within 1000KM
                 densities[i] += 1
