@@ -25,7 +25,21 @@ PLANET_TEXTURE = "pyvista_satellite_tracker/earth2k.jpg"
 class App(MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
+        self.setup_qt_frame()
 
+        self.sat_data = self.get_sat_data(TLE_URLS) # base satellite data
+        self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
+        self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
+
+        thread = Thread(target=self.update)
+        thread.start()
+    
+    def update(self):
+        while True:
+            self.point_cloud.points = self.calculate_positions()
+            #self.plotter.app.processEvents() # needs the QTInteractor event processor
+
+    def setup_qt_frame(self):
         # create the frame
         self.frame = QtWidgets.QFrame()
         vlayout = QtWidgets.QVBoxLayout()
@@ -37,20 +51,7 @@ class App(MainWindow):
 
         self.frame.setLayout(vlayout)
         self.setCentralWidget(self.frame)
-        self.build_menus()
-
-        self.sat_data = self.get_sat_data(TLE_URLS) # base satellite data
-        self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
-
-        self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
-
-        thread = Thread(target=self.update)
-        thread.start()
-    
-    def update(self):
-        while True:
-            self.point_cloud.points = self.calculate_positions()
-            #self.plotter.app.processEvents() # needs the QTInteractor event processor
+        self.build_menus() # not working atm
 
     def build_menus(self):
         # simple menu to demo functions
