@@ -6,7 +6,7 @@ from pyvistaqt import BackgroundPlotter, QtInteractor, MainWindow
 from requests import get
 from datetime import datetime
 from math import sqrt, pi, atan, atan2, asin
-from threading import Thread, Event
+from threading import Thread, Event, get_ident
 from qtpy import QtWidgets
 import progressbar
 import time
@@ -54,25 +54,29 @@ class App(MainWindow):
         return self.datasets[self.dataset_index]
 
     def start_threads(self):
+        print('threads starting')
         self.update_thread = StoppableThread(target=self.update)
         self.update_thread.start()
         self.density_update_thread = StoppableThread(target=self.density_update)
         self.density_update_thread.start()
+        print('threads running')
 
     def update(self):
         while True:
             if self.update_thread.stopped:
-                return
-
+                break
+            print('updated' , get_ident())
             self.point_cloud.points = self.calculate_positions()
             self.plotter.update()
+            time.sleep(0.2)
 
     def change_dataset(self):
+        print('stopping threads')
         self.update_thread.stop()
         self.update_thread.join()
         self.density_update_thread.stop()
         self.density_update_thread.join()
-
+        print('threads stopped')
         if self.dataset_index + 1 > len(self.datasets):
             self.dataset_index = 0
         else:
@@ -81,12 +85,13 @@ class App(MainWindow):
         self.sat_data = self.get_sat_data(self.dataset)
         print("Changed dataset")
         self.start_threads()
+        print('threads restarted')
     
     def density_update(self):
         while True:
             if self.update_thread.stopped:
-                return
-
+                break
+            print('density updated', get_ident())
             self.densities = self.calculate_densities()
             self.point_cloud['point_color'][:] = self.densities
 
@@ -183,7 +188,6 @@ class App(MainWindow):
             sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
             _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
             sat_pos_list[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
-
         return sat_pos_list
 
     def calculate_densities(self):
