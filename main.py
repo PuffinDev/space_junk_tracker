@@ -6,7 +6,7 @@ from pyvistaqt import BackgroundPlotter, QtInteractor, MainWindow
 from requests import get
 from datetime import datetime
 from math import sqrt, pi, atan, atan2, asin
-from threading import Thread
+from threading import Thread, Event
 from qtpy import QtWidgets
 import progressbar
 import time
@@ -18,11 +18,23 @@ RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measur
 KM = (RADIUS*2)/12742 # kilometer scalar
 
 TLE_DATASETS = [
-        ["https://celestrak.org/NORAD/elements/gp.php?GROUP=analyst&FORMAT=tle"],
-        ["http://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=tle"],
+        ["http://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle"],
+        ["http://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"],
         ["http://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle"]
 ]
 PLANET_TEXTURE = "resources/earth2k.jpg"
+
+class StoppableThread(Thread):
+    def __init__(self,  *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
+        self._stop_event = Event()
+
+    def stop(self):
+        self._stop_event.set()
+
+    @property
+    def stopped(self):
+        return self._stop_event.is_set()
 
 class App(MainWindow):
     def __init__(self, datasets, parent=None):
@@ -35,30 +47,46 @@ class App(MainWindow):
         self.densities = self.calculate_densities()
         self.point_cloud['point_color'] = self.densities
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
-
-        Thread(target=self.update).start()
-        Thread(target=self.density_update_thread).start()
+        self.start_threads()
     
     @property
     def dataset(self):
         return self.datasets[self.dataset_index]
 
+    def start_threads(self):
+        self.update_thread = StoppableThread(target=self.update)
+        self.update_thread.start()
+        self.density_update_thread = StoppableThread(target=self.density_update)
+        self.density_update_thread.start()
+
     def update(self):
         while True:
+            if self.update_thread.stopped:
+                return
+
             self.point_cloud.points = self.calculate_positions()
             self.plotter.update()
 
     def change_dataset(self):
-        if len(self.datasets) <= self.dataset_index:
+        self.update_thread.stop()
+        self.update_thread.join()
+        self.density_update_thread.stop()
+        self.density_update_thread.join()
+
+        if self.dataset_index + 1 > len(self.datasets):
             self.dataset_index = 0
         else:
             self.dataset_index += 1
 
         self.sat_data = self.get_sat_data(self.dataset)
         print("Changed dataset")
+        self.start_threads()
     
-    def density_update_thread(self):
+    def density_update(self):
         while True:
+            if self.update_thread.stopped:
+                return
+
             self.densities = self.calculate_densities()
             self.point_cloud['point_color'][:] = self.densities
 
