@@ -42,10 +42,7 @@ class App(MainWindow):
         self.setup_qt_frame()
         self.datasets = datasets
         self.dataset_index = 0
-        self.sat_data = self.get_sat_data(self.dataset)
-        self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
-        self.densities = self.calculate_densities()
-        self.point_cloud['point_color'] = self.densities
+        self.set_initial_data_sets()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
         self.start_threads()
     
@@ -70,6 +67,15 @@ class App(MainWindow):
             self.plotter.update()
             time.sleep(0.2)
 
+    def density_update(self):
+        while True:
+            if self.update_thread.stopped:
+                break
+            print('density updated', get_ident())
+            self.densities = self.calculate_densities()
+            self.point_cloud['point_color'][:] = self.densities
+            time.sleep(0.2)
+
     def change_dataset(self):
         print('stopping threads')
         self.update_thread.stop()
@@ -81,19 +87,18 @@ class App(MainWindow):
             self.dataset_index = 0
         else:
             self.dataset_index += 1
-
-        self.sat_data = self.get_sat_data(self.dataset)
+        self.plotter.remove_actor(self.sat_mesh)
+        self.set_initial_data_sets()
+        self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
         print("Changed dataset")
         self.start_threads()
         print('threads restarted')
-    
-    def density_update(self):
-        while True:
-            if self.update_thread.stopped:
-                break
-            print('density updated', get_ident())
-            self.densities = self.calculate_densities()
-            self.point_cloud['point_color'][:] = self.densities
+
+    def set_initial_data_sets(self):
+        self.sat_data = self.get_sat_data(self.dataset)
+        self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
+        self.densities = self.calculate_densities()
+        self.point_cloud['point_color'] = self.densities
 
     def setup_qt_frame(self):
         # create the frame
@@ -145,7 +150,7 @@ class App(MainWindow):
         # create plotter and add meshes
         self.plotter.add_background_image(stars)
         self.plotter.add_mesh(globe, texture=tex)
-        self.plotter.add_mesh(self.point_cloud)
+        self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
         self.plotter.show_axes()
         self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
 
