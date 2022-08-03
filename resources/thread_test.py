@@ -46,11 +46,43 @@ class MyApp():
         self.print("Changed dataset")
         self.start_threads()
         
-    def main(self):
+
+    def update_2(self, stop):
         while True:
-            self.start_threads()
-            time.sleep(1)
-            self.restart_threads()
+            time.sleep(0.2)
+            print('update running')
+            if stop():
+                    break
+
+    def density_2(self, stop):
+        while True:
+            time.sleep(0.3)
+            print('density running')
+            if stop():
+                    break
+
+    def start_threads_2(self):
+        print('starting')
+        self.stop_threads = False
+        self.t1 = Thread(target = self.update_2, args =(lambda : self.stop_threads, ))
+        self.t1.start()
+        self.t2 = Thread(target = self.density_2, args =(lambda : self.stop_threads, ))
+        self.t2.start()
+
+    def restart_threads_2(self):
+        print('stopping')
+        self.stop_threads = True
+        self.t1.join()
+        self.t2.join()
+        print('stopped')
+        time.sleep(1)
+        self.start_threads_2()
+
+    def main(self):
+        self.start_threads_2()
+        while True:
+            time.sleep(5)
+            self.restart_threads_2()
 
 if __name__ == "__main__":
     my_app = MyApp()
