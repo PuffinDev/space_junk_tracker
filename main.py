@@ -7,6 +7,7 @@ from requests import get
 from datetime import datetime
 from math import sqrt, pi, atan, atan2, asin
 from threading import Thread, Event, get_ident
+from functools import partial
 from qtpy import QtWidgets
 import progressbar
 import time
@@ -81,6 +82,7 @@ class App(MainWindow):
         self.density_update_thread.join()
 
         self.dataset_name = dataset_name
+        print(self.dataset_name)
 
         self.plotter.remove_actor(self.sat_mesh)
         self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
@@ -123,7 +125,7 @@ class App(MainWindow):
 
         for dataset_name in self.datasets.keys():
             change_dataset_button = QtWidgets.QAction(dataset_name, self)
-            change_dataset_button.triggered.connect(lambda: self.change_dataset(change_dataset_button.iconText()))
+            change_dataset_button.triggered.connect(partial(self.change_dataset, dataset_name))
             dataset_menu.addAction(change_dataset_button)
 
     def setup_earth(self):
