@@ -17,11 +17,11 @@ os.environ["QT_API"] = "pyqt5"
 RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measurement Radian, so renamed to RADIUS
 KM = (RADIUS*2)/12742 # kilometer scalar
 
-TLE_DATASETS = [
-        ["http://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle"],
-        ["http://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"],
-        ["http://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle"]
-]
+TLE_DATASETS = {
+    "Iridium 33 debris": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle"],
+    "Stations": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"],
+    "100 brightest satellites": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle"]
+}
 PLANET_TEXTURE = "resources/earth2k.jpg"
 
 class StoppableThread(Thread):
@@ -39,16 +39,17 @@ class StoppableThread(Thread):
 class App(MainWindow):
     def __init__(self, datasets, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
-        self.setup_qt_frame()
         self.datasets = datasets
-        self.dataset_index = 0
+        self.dataset_name = list(self.datasets.keys())[0]
         self.set_initial_data_sets()
+
+        self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
         self.start_threads()
 
     @property
     def dataset(self):
-        return self.datasets[self.dataset_index]
+        return self.datasets[self.dataset_name]
 
     def start_threads(self):
         self.update_thread = StoppableThread(target=self.update)
@@ -74,16 +75,15 @@ class App(MainWindow):
             self.point_cloud['point_color'][:] = self.densities
             time.sleep(0.2)
 
-    def change_dataset(self):
+    def change_dataset(self, dataset_name):
         self.update_thread.stop()
         self.update_thread.join()
         self.density_update_thread.stop()
         self.density_update_thread.join()
 
-        if self.dataset_index + 1 >= len(self.datasets):
-            self.dataset_index = 0
-        else:
-            self.dataset_index += 1
+        self.dataset_name = dataset_name
+        print(self.dataset_name)
+
         self.plotter.remove_actor(self.sat_mesh)
         self.set_initial_data_sets()
         self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
@@ -119,12 +119,12 @@ class App(MainWindow):
         exit_button.triggered.connect(self.close)
         file_menu.addAction(exit_button)
 
-        dataset_menu = main_menu.addMenu("Dataset")
-        change_dataset_button = QtWidgets.QAction('Change Dataset', self)
-        change_dataset_button.setShortcut("Ctrl+D")
-        change_dataset_button.triggered.connect(self.change_dataset)
-        dataset_menu.addAction(change_dataset_button)
+        dataset_menu = main_menu.addMenu("Change Dataset")
 
+        for dataset_name in self.datasets.keys():
+            change_dataset_button = QtWidgets.QAction(dataset_name, self)
+            change_dataset_button.triggered.connect(lambda: self.change_dataset(change_dataset_button.iconText()))
+            dataset_menu.addAction(change_dataset_button)
 
     def setup_earth(self):
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
