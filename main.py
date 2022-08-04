@@ -82,12 +82,9 @@ class App(MainWindow):
         self.density_update_thread.join()
 
         self.dataset_name = dataset_name
-        print(self.dataset_name)
 
         self.plotter.remove_actor(self.sat_mesh)
-        self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
         self.initalise_data_set()
-        print("Changed dataset")
         self.start_threads()
 
     def initalise_data_set(self):
