@@ -45,24 +45,22 @@ class App(MainWindow):
         self.set_initial_data_sets()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
         self.start_threads()
-    
+
     @property
     def dataset(self):
         return self.datasets[self.dataset_index]
 
     def start_threads(self):
-        print('threads starting')
         self.update_thread = StoppableThread(target=self.update)
         self.update_thread.start()
         self.density_update_thread = StoppableThread(target=self.density_update)
         self.density_update_thread.start()
-        print('threads running')
 
     def update(self):
         while True:
             if self.update_thread.stopped:
                 break
-            print('updated' , get_ident())
+
             self.point_cloud.points = self.calculate_positions()
             self.plotter.update()
             time.sleep(0.2)
@@ -71,28 +69,25 @@ class App(MainWindow):
         while True:
             if self.update_thread.stopped:
                 break
-            print('density updated', get_ident())
+
             self.densities = self.calculate_densities()
             self.point_cloud['point_color'][:] = self.densities
             time.sleep(0.2)
 
     def change_dataset(self):
-        print('stopping threads')
         self.update_thread.stop()
         self.update_thread.join()
         self.density_update_thread.stop()
         self.density_update_thread.join()
-        print('threads stopped')
-        if self.dataset_index + 1 > len(self.datasets):
+
+        if self.dataset_index + 1 >= len(self.datasets):
             self.dataset_index = 0
         else:
             self.dataset_index += 1
         self.plotter.remove_actor(self.sat_mesh)
         self.set_initial_data_sets()
         self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
-        print("Changed dataset")
         self.start_threads()
-        print('threads restarted')
 
     def set_initial_data_sets(self):
         self.sat_data = self.get_sat_data(self.dataset)
@@ -160,7 +155,8 @@ class App(MainWindow):
             yield list_a[i:i + chunk_size]
 
     # calculates the distance between 2 points in 3d space
-    def calculate_dist(self, point1, point2):
+    @staticmethod
+    def calculate_dist(point1, point2):
         x, y, z = point1
         a, b, c = point2
         distance = sqrt(pow(a - x, 2) +
