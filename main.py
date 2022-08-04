@@ -42,8 +42,8 @@ class App(MainWindow):
         self.setup_qt_frame()
         self.datasets = datasets
         self.dataset_index = 0
-        self.set_initial_data_sets()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
+        self.initalise_data_set()
         self.start_threads()
     
     @property
@@ -88,17 +88,17 @@ class App(MainWindow):
         else:
             self.dataset_index += 1
         self.plotter.remove_actor(self.sat_mesh)
-        self.set_initial_data_sets()
-        self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
+        self.initalise_data_set()
         print("Changed dataset")
         self.start_threads()
         print('threads restarted')
 
-    def set_initial_data_sets(self):
+    def initalise_data_set(self):
         self.sat_data = self.get_sat_data(self.dataset)
         self.point_cloud = pv.PolyData(self.calculate_positions()) # create point cloud
         self.densities = self.calculate_densities()
         self.point_cloud['point_color'] = self.densities
+        self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
 
     def setup_qt_frame(self):
         # create the frame
@@ -150,7 +150,6 @@ class App(MainWindow):
         # create plotter and add meshes
         self.plotter.add_background_image(stars)
         self.plotter.add_mesh(globe, texture=tex)
-        self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
         self.plotter.show_axes()
         self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
 
