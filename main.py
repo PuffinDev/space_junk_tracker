@@ -19,6 +19,7 @@ RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measur
 KM = (RADIUS*2)/12742 # kilometer scalar
 
 TLE_DATASETS = {
+    "Last 30 days launches": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&satcat=/pub/satcat.txt&orbits=25&referenceFrame=1"],
     "Iridium 33 debris": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle"],
     "Stations": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"],
     "100 brightest satellites": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle"]
@@ -134,6 +135,7 @@ class App(MainWindow):
                 0.5 + asin(temp_globe.points[i, 2])/pi
             ]
         # bad attempt at aligning point cloud to the sphere
+        temp_globe.rotate_z(132)
         return temp_globe
 
     def setup_plotter(self, globe):
