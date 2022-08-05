@@ -33,9 +33,9 @@ class App(MainWindow):
         return self.datasets[self.dataset_name]
 
     def start_threads(self):
-        self.position_update_thread = StoppableThread(target=self.position_update)
+        self.position_update_thread = StoppableThread(target=self.position_update, daemon=True)
         self.position_update_thread.start()
-        self.density_update_thread = StoppableThread(target=self.density_update)
+        self.density_update_thread = StoppableThread(target=self.density_update, daemon=True)
         self.density_update_thread.start()
 
     def position_update(self):
