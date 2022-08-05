@@ -70,7 +70,7 @@ class App(MainWindow):
         self.point_cloud = pv.PolyData(calculate_positions(self.sat_data)) # create point cloud
         self.densities = [0 for _ in self.sat_data]
         self.point_cloud['Density'] = self.densities
-        self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, 50))
+        self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, 50), colormap="YlOrBr")
 
     def setup_qt_frame(self):
         # create the frame
