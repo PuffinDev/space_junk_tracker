@@ -51,7 +51,7 @@ class App(MainWindow):
             if self.position_update_thread.stopped:
                 break
             self.densities = calculate_densities(self.point_cloud)
-            self.point_cloud['point_color'][:] = self.densities
+            self.point_cloud['Density'][:] = self.densities
             time.sleep(0.2)
 
     def change_dataset(self, dataset_name):
@@ -59,6 +59,7 @@ class App(MainWindow):
         self.position_update_thread.join()
         self.density_update_thread.stop()
         self.density_update_thread.join()
+
         self.dataset_name = dataset_name
         self.plotter.remove_actor(self.sat_mesh)
         self.initalise_data_set()
@@ -67,9 +68,9 @@ class App(MainWindow):
     def initalise_data_set(self):
         self.sat_data = get_sat_data(self.dataset)
         self.point_cloud = pv.PolyData(calculate_positions(self.sat_data)) # create point cloud
-        self.densities = calculate_densities(self.point_cloud)
-        self.point_cloud['point_color'] = self.densities
-        self.sat_mesh = self.plotter.add_mesh(self.point_cloud)
+        self.densities = [0 for _ in self.sat_data]
+        self.point_cloud['Density'] = self.densities
+        self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, 50))
 
     def setup_qt_frame(self):
         # create the frame
