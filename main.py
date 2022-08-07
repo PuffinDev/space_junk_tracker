@@ -5,17 +5,12 @@ from math import pi, atan2, asin
 from functools import partial
 from qtpy import QtWidgets
 from space_tracker_resources import StoppableThread, calculate_densities, get_sat_data, calculate_positions, RADIUS, KM
+from tle_datasets import TLE_DATASETS
 import time
 import sys
 import os
 os.environ["QT_API"] = "pyqt5"
 
-TLE_DATASETS = {
-    "Last 30 days launches": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&satcat=/pub/satcat.txt&orbits=25&referenceFrame=1"],
-    "Iridium 33 debris": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle"],
-    "Stations": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"],
-    "100 brightest satellites": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle"]
-}
 PLANET_TEXTURE = "resources/earth2k.jpg"
 
 class App(MainWindow):
@@ -68,9 +63,10 @@ class App(MainWindow):
     def initalise_data_set(self):
         self.sat_data = get_sat_data(self.dataset)
         self.point_cloud = pv.PolyData(calculate_positions(self.sat_data)) # create point cloud
+        print("data points : ", len(self.point_cloud.points))
         self.densities = [0 for _ in self.sat_data]
         self.point_cloud['Density'] = self.densities
-        self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, 50), colormap="YlOrBr")
+        self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, 50), colormap="rainbow")
 
     def setup_qt_frame(self):
         # create the frame
