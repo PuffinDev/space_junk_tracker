@@ -1,9 +1,11 @@
 from math import sqrt
+import numpy as np
 from threading import Thread, Event
 from requests import get
 from sgp4.api import Satrec
 from sgp4.conveniences import jday_datetime
 from datetime import datetime
+import scipy.spatial as spatial
 
 RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measurement Radian, so renamed to RADIUS
 KM = (RADIUS*2)/12742 # kilometer scalar
@@ -21,15 +23,11 @@ class StoppableThread(Thread):
         return self._stop_event.is_set()
 
 def calculate_densities(point_cloud):
-    densities = [0 for _ in range(len(point_cloud.points))]
+    points = np.array(point_cloud.points)
+    tree = spatial.KDTree(np.array(points))
+    neighbors = tree.query_ball_tree(tree, KM*1000)
 
-    for i in range(len(point_cloud.points)):
-        satellite = point_cloud.points[i]
-        for other_satellite in point_cloud.points:
-            if calculate_dist(satellite, other_satellite) < KM*1000: # search for other satellites within 1000KM
-                densities[i] += 1
-    
-    return densities
+    return [len(i) for i in neighbors]
 
 def calculate_positions(sat_data):
     sat_pos_list = [[0.0, 0.0, 0.0] for _ in range(len(sat_data))]

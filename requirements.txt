@@ -7,3 +7,4 @@ sgp4
 numpy
 pyqt5
 qtpy
+scipy
