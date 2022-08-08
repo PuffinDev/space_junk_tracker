@@ -1,6 +1,6 @@
 import numpy as np
 import pyvista as pv
-from pyvistaqt import QtInteractor, MainWindow
+from pyvistaqt import QtInteractor, MainWindow, BackgroundPlotter
 from math import pi, atan2, asin
 from functools import partial
 from qtpy import QtWidgets
@@ -107,13 +107,13 @@ class App(MainWindow):
 
     def setup_plotter(self, globe):
         tex = pv.read_texture(PLANET_TEXTURE)
-        stars = pv.examples.download_stars_jpg()
+        cubemap = pv.cubemap("resources/cubemap")
         self.camera = pv.Camera()
-        # create plotter and add meshes
-        self.plotter.add_background_image(stars)
-        self.plotter.add_mesh(globe, texture=tex)
+        self.plotter.add_mesh(globe, texture=tex, lighting=False)
         self.plotter.show_axes()
         self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
+        self.plotter.add_actor(cubemap.to_skybox())
+        self.plotter.set_environment_texture(cubemap, True)
 
 if __name__ == "__main__":
     qtapp = QtWidgets.QApplication(sys.argv)
