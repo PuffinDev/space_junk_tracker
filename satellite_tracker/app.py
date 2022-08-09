@@ -40,7 +40,7 @@ class App(MainWindow):
 
     def density_update(self):
         while True:
-            if self.position_update_thread.stopped:
+            if self.density_update_thread.stopped:
                 break
             self.densities = calculate_densities(self.point_cloud)
             self.point_cloud['Density'][:] = self.densities
