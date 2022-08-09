@@ -37,7 +37,6 @@ class App(MainWindow):
                 break
             self.point_cloud.points = calculate_positions(self.sat_data)
             self.plotter.update()
-            time.sleep(0.2)
 
     def density_update(self):
         while True:
