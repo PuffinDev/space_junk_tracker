@@ -1,4 +1,4 @@
-TLE_DATASETS = {
+{
     "Last 30 days launches": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&satcat=/pub/satcat.txt&orbits=25&referenceFrame=1"],
     "Iridium 33 debris": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle"],
     "Stations": ["http://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"],
