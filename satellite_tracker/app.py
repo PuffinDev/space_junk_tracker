@@ -48,15 +48,18 @@ class App(MainWindow):
             time.sleep(0.2)
 
     def change_dataset(self, dataset_name):
-        self.position_update_thread.stop()
-        self.position_update_thread.join()
-        self.density_update_thread.stop()
-        self.density_update_thread.join()
+        self.stop_threads()
 
         self.dataset_name = dataset_name
         self.plotter.remove_actor(self.sat_mesh)
         self.initalise_data_set()
         self.start_threads()
+    
+    def stop_threads(self):
+        self.position_update_thread.stop()
+        self.position_update_thread.join()
+        self.density_update_thread.stop()
+        self.density_update_thread.join()
 
     def initalise_data_set(self):
         self.sat_data = get_sat_data(self.dataset)
