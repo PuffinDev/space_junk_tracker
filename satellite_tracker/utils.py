@@ -6,9 +6,11 @@ from sgp4.api import Satrec
 from sgp4.conveniences import jday_datetime
 from datetime import datetime
 import scipy.spatial as spatial
+from json import load
 
 RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measurement Radian, so renamed to RADIUS
 KM = (RADIUS*2)/12742 # kilometer scalar
+TLE_DATASETS_FILE = "resources/tle_datasets.json"
 
 class StoppableThread(Thread):
     def __init__(self,  *args, **kwargs):
@@ -68,3 +70,7 @@ def get_sat_data(url_list):
         if len(data) < 3:
             sat_data.remove(data) # remove incomplete data
     return sat_data
+
+def load_tle_datasets_from_file():
+    with open(TLE_DATASETS_FILE) as f:
+        return load(f)

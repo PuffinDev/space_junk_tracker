@@ -4,7 +4,7 @@ from pyvistaqt import QtInteractor, MainWindow, BackgroundPlotter
 from math import pi, atan2, asin
 from functools import partial
 from qtpy import QtWidgets
-from .utils import StoppableThread, calculate_densities, get_sat_data, calculate_positions, RADIUS, KM
+from .utils import StoppableThread, calculate_densities, get_sat_data, calculate_positions, load_tle_datasets_from_file, RADIUS, KM
 import time
 import os
 os.environ["QT_API"] = "pyqt5"
@@ -12,9 +12,9 @@ os.environ["QT_API"] = "pyqt5"
 PLANET_TEXTURE = "resources/earth2k.jpg"
 
 class App(MainWindow):
-    def __init__(self, datasets, parent=None):
+    def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
-        self.datasets = datasets
+        self.datasets = load_tle_datasets_from_file()
         self.dataset_name = list(self.datasets.keys())[0]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
