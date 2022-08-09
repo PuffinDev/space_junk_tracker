@@ -15,7 +15,7 @@ hours = {
     '4/8': 4.5, # Thurday
     '5/8': 5, # Friday
     '6/8': 0, # Saturday
-    '7/8': 1.3, # SUnday
+    '7/8': 1.3, # Sunday
     '8/8': 5, # Monday
 }
 
