@@ -53,7 +53,7 @@ class App(MainWindow):
         self.plotter.remove_actor(self.sat_mesh)
         self.initalise_data_set()
         self.start_threads()
-    
+
     def stop_threads(self):
         self.position_update_thread.stop()
         self.position_update_thread.join()
