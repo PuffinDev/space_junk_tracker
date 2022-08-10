@@ -15,7 +15,7 @@ class App(MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.datasets = load_tle_datasets_from_file()
-        self.dataset_name = list(self.datasets.keys())[0]
+        self.dataset_name = list(self.datasets.keys())[5]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
         self.initalise_data_set()
@@ -62,7 +62,8 @@ class App(MainWindow):
 
     def initalise_data_set(self):
         self.sat_data = get_sat_data(self.dataset)
-        self.point_cloud = pv.PolyData(calculate_positions(self.sat_data)) # create point cloud
+        self.positions = calculate_positions(self.sat_data)
+        self.point_cloud = pv.PolyData(self.positions) # create point cloud
         self.densities = calculate_densities(self.point_cloud)
         self.point_cloud['Density'] = self.densities
         self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, max(self.densities)), colormap="rainbow")

@@ -1,8 +1,8 @@
-from math import sqrt
+from math import sqrt, isnan
 import numpy as np
 from threading import Thread, Event
 from requests import get
-from sgp4.api import Satrec
+from sgp4.api import Satrec, SGP4_ERRORS
 from sgp4.conveniences import jday_datetime
 from datetime import datetime
 import scipy.spatial as spatial
@@ -32,15 +32,17 @@ def calculate_densities(point_cloud):
     return [len(i) for i in neighbors]
 
 def calculate_positions(sat_data):
-    sat_pos_list = [[0.0, 0.0, 0.0] for _ in range(len(sat_data))]
+    sat_pos_list = []
 
     dt = datetime.now()
     jd, fr = jday_datetime(dt)
 
     for i, satellite in enumerate(sat_data):
         sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
-        _, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position 
-        sat_pos_list[i] = [r[0]*KM, r[1]*KM, r[2]*KM] # set position of the point
+        e, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position
+        if e == 0 and r[0]*KM < 1000 and r[1]*KM < 1000 and r[2]*KM < 1000: # check for errors or anomalous results
+            sat_pos_list.append([r[0]*KM, r[1]*KM, r[2]*KM]) # set position of the point
+
     return sat_pos_list
 
 def calculate_dist(point1, point2):
@@ -61,14 +63,24 @@ def get_sat_data(url_list):
     tle_text = ""
     for url in urls:
         result = get(url)
-        if result.status_code != 200:
+        if result.status_code not in [200, 204]:
+            print(result.status_code)
             raise Exception("Failed to retrive TLE data")
         tle_text += result.text
-    tle_list = tle_text.split("\r\n")
+
+    tle_list = tle_text.replace("\r", "").split("\n")
     sat_data = list(split_tle(tle_list, 3)) # Two line element sets in a list [["line1", "line2", "line3"]]
-    for data in sat_data:
-        if len(data) < 3:
-            sat_data.remove(data) # remove incomplete data
+    # print(sat_data[21687])
+    # del sat_data[21687]
+    # breaks at 21688
+
+    for i, data in enumerate(sat_data):
+        identifier = data[0]
+        for sat in sat_data[i:]:
+            if sat[0] == identifier:
+                sat_data.remove(sat)
+                print("rm'd")
+
     return sat_data
 
 def load_tle_datasets_from_file():
