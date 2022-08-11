@@ -1,6 +1,7 @@
 from math import sqrt, isnan
 import numpy as np
 from threading import Thread, Event
+import grequests
 from requests import get
 from sgp4.api import Satrec, SGP4_ERRORS
 from sgp4.conveniences import jday_datetime
@@ -36,12 +37,15 @@ def calculate_positions(sat_data):
 
     dt = datetime.now()
     jd, fr = jday_datetime(dt)
+    errs = 0
 
     for i, satellite in enumerate(sat_data):
         sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
         e, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position
         if e == 0 and r[0]*KM < 1000 and r[1]*KM < 1000 and r[2]*KM < 1000: # check for errors or anomalous results
             sat_pos_list.append([r[0]*KM, r[1]*KM, r[2]*KM]) # set position of the point
+        else:
+            errs += 1
 
     return sat_pos_list
 
@@ -61,12 +65,14 @@ def split_tle(list_a, chunk_size):
 def get_sat_data(url_list):
     urls = url_list
     tle_text = ""
-    for url in urls:
-        result = get(url)
-        if result.status_code not in [200, 204]:
-            print(result.status_code)
+
+    rs = (grequests.get(u) for u in urls)
+    responses = grequests.map(rs)
+    for response in responses:
+        if response.status_code not in [200, 204]:
+            print(response.status_code)
             raise Exception("Failed to retrive TLE data")
-        tle_text += result.text
+        tle_text += response.text
 
     tle_list = tle_text.replace("\r", "").split("\n")
     sat_data = list(split_tle(tle_list, 3)) # Two line element sets in a list [["line1", "line2", "line3"]]
