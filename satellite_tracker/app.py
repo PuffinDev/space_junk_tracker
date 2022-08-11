@@ -42,15 +42,17 @@ class App(MainWindow):
         while True:
             if self.position_update_thread.stopped:
                 break
-            self.point_cloud.points = calculate_positions(self.sat_data)
+            self.positions = calculate_positions(self.sat_data)
+            self.point_cloud.points = self.positions
 
     def density_update(self):
         while True:
             if self.density_update_thread.stopped:
                 break
-            self.densities = calculate_densities(self.point_cloud)
+
+            self.densities = calculate_densities(self.point_cloud.points)
             self.point_cloud['Density'][:] = self.densities
-            time.sleep(0.2)
+            time.sleep(5)
 
     def change_dataset(self, dataset_name):
         self.stop_threads()
@@ -72,7 +74,7 @@ class App(MainWindow):
         self.sat_data = get_sat_data(self.dataset)
         self.positions = calculate_positions(self.sat_data)
         self.point_cloud = pv.PolyData(self.positions) # create point cloud
-        self.densities = calculate_densities(self.point_cloud)
+        self.densities = calculate_densities(self.point_cloud.points)
         self.point_cloud['Density'] = self.densities
         self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, max(self.densities)), colormap="rainbow")
 

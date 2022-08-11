@@ -24,8 +24,8 @@ class StoppableThread(Thread):
     def stopped(self):
         return self._stop_event.is_set()
 
-def calculate_densities(point_cloud):
-    points = np.array(point_cloud.points)
+def calculate_densities(points):
+    points = np.array(points)
     tree = spatial.KDTree(np.array(points))
     neighbors = tree.query_ball_tree(tree, KM*1000)
 
@@ -70,9 +70,6 @@ def get_sat_data(url_list):
 
     tle_list = tle_text.replace("\r", "").split("\n")
     sat_data = list(split_tle(tle_list, 3)) # Two line element sets in a list [["line1", "line2", "line3"]]
-    # print(sat_data[21687])
-    # del sat_data[21687]
-    # breaks at 21688
 
     for sat in sat_data:
         if len(sat) != 3 or len(sat[2]) < 3:
