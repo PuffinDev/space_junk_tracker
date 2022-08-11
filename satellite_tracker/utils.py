@@ -74,12 +74,19 @@ def get_sat_data(url_list):
     # del sat_data[21687]
     # breaks at 21688
 
-    for i, data in enumerate(sat_data):
-        identifier = data[0]
-        for sat in sat_data[i:]:
-            if sat[0] == identifier:
-                sat_data.remove(sat)
-                print("rm'd")
+    for sat in sat_data:
+        if len(sat) != 3 or len(sat[2]) < 3:
+            sat_data.remove(sat)
+
+    cat_nums = set()
+
+    for sat in sat_data:
+        cat_num = list(filter(('').__ne__, sat[1].split(" ")))[1]
+
+        if cat_num in cat_nums:
+            sat_data.remove(sat)
+        else:
+            cat_nums.add(cat_num)
 
     return sat_data
 
