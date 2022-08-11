@@ -30,13 +30,19 @@ class App(MainWindow):
         self.position_update_thread.start()
         self.density_update_thread = StoppableThread(target=self.density_update, daemon=True)
         self.density_update_thread.start()
+        self.update_thread = StoppableThread(target=self.update, daemon=True)
+        self.update_thread.start()
+
+    def update(self):
+        if self.update_thread.stopped:
+            return
+        self.plotter.update()
 
     def position_update(self):
         while True:
             if self.position_update_thread.stopped:
                 break
             self.point_cloud.points = calculate_positions(self.sat_data)
-            self.plotter.update()
 
     def density_update(self):
         while True:
@@ -59,6 +65,8 @@ class App(MainWindow):
         self.position_update_thread.join()
         self.density_update_thread.stop()
         self.density_update_thread.join()
+        self.update_thread.stop()
+        self.update_thread.join()
 
     def initalise_data_set(self):
         self.sat_data = get_sat_data(self.dataset)
