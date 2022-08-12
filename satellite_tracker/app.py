@@ -15,7 +15,7 @@ class App(MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.datasets = load_tle_datasets_from_file()
-        self.dataset_name = list(self.datasets.keys())[5]
+        self.dataset_name = list(self.datasets.keys())[0]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
         if self.initalise_data_set():
