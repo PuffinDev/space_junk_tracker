@@ -2,12 +2,16 @@ from math import sqrt, isnan
 import numpy as np
 from threading import Thread, Event
 import grequests
-from requests import get
+from requests import get, Session
 from sgp4.api import Satrec, SGP4_ERRORS
 from sgp4.conveniences import jday_datetime
 from datetime import datetime
 import scipy.spatial as spatial
 from json import load
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measurement Radian, so renamed to RADIUS
 KM = (RADIUS*2)/12742 # kilometer scalar
@@ -62,17 +66,42 @@ def split_tle(list_a, chunk_size):
     for i in range(0, len(list_a), chunk_size):
         yield list_a[i:i + chunk_size]
 
+def get_spacetrack_sat_data(url):
+    credentials = {"identity": os.getenv("EMAIL"), "password": os.getenv("PASSWORD")}
+
+    with Session() as session:
+        resp = session.post("https://www.space-track.org/ajaxauth/login", data=credentials)
+
+        # this query picks up all Starlink satellites from the catalog. Note - a 401 failure shows you have bad credentials 
+        resp = session.get(url)
+        if resp.status_code != 401:
+            print("Could not get data from space-track.org. Please make sure you have an account and have filled out the .env file.")
+
+        return resp
+
 def get_sat_data(url_list):
     urls = url_list
     tle_text = ""
 
-    rs = (grequests.get(u) for u in urls)
+    spacetrack_urls = []
+    rs = []
+    for u in urls:
+        if not "space-track.org" in u:
+            rs.append(grequests.get(u))
+        else:
+            spacetrack_urls.append(u)
+
     responses = grequests.map(rs)
     for response in responses:
         if response.status_code not in [200, 204]:
             print(response.status_code)
             raise Exception("Failed to retrive TLE data")
         tle_text += response.text
+    
+    for u in spacetrack_urls:
+        response = get_spacetrack_sat_data(u)
+        if response.status_code == 200:
+            tle_text += response.text
 
     tle_list = tle_text.replace("\r", "").split("\n")
     sat_data = list(split_tle(tle_list, 3)) # Two line element sets in a list [["line1", "line2", "line3"]]
