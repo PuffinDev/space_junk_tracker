@@ -74,7 +74,7 @@ def get_spacetrack_sat_data(url):
 
         # this query picks up all Starlink satellites from the catalog. Note - a 401 failure shows you have bad credentials 
         resp = session.get(url)
-        if resp.status_code != 401:
+        if resp.status_code == 401:
             print("Could not get data from space-track.org. Please make sure you have an account and have filled out the .env file.")
 
         return resp
