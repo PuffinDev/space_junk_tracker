@@ -18,8 +18,11 @@ class App(MainWindow):
         self.dataset_name = list(self.datasets.keys())[5]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
-        self.initalise_data_set()
-        self.start_threads()
+        if self.initalise_data_set():
+            self.start_threads()
+        else:
+            print(f"Error: dataset \"{self.dataset_name}\" is empty or could not be loaded.")
+            exit()
 
     @property
     def dataset(self):
@@ -57,26 +60,36 @@ class App(MainWindow):
     def change_dataset(self, dataset_name):
         self.stop_threads()
 
+        prev_dataset = self.dataset_name
         self.dataset_name = dataset_name
         self.plotter.remove_actor(self.sat_mesh)
-        self.initalise_data_set()
-        self.start_threads()
+        if self.initalise_data_set():
+            self.start_threads()
+        else:
+            print(f"Error: dataset \"{self.dataset_name}\" is empty or could not be loaded.")
+            print("Reverting to previous dataset...")
+            self.change_dataset(prev_dataset)
 
     def stop_threads(self):
-        self.position_update_thread.stop()
-        self.position_update_thread.join()
-        self.density_update_thread.stop()
-        self.density_update_thread.join()
-        self.update_thread.stop()
-        self.update_thread.join()
+        if hasattr(self, 'update_thread') and hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
+            self.position_update_thread.stop()
+            self.position_update_thread.join()
+            self.density_update_thread.stop()
+            self.density_update_thread.join()
+            self.update_thread.stop()
+            self.update_thread.join()
 
     def initalise_data_set(self):
         self.sat_data = get_sat_data(self.dataset)
+        if len(self.sat_data) < 1:
+            return False
+
         self.positions = calculate_positions(self.sat_data)
         self.point_cloud = pv.PolyData(self.positions) # create point cloud
         self.densities = calculate_densities(self.point_cloud.points)
         self.point_cloud['Density'] = self.densities
         self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, max(self.densities)), colormap="rainbow")
+        return True
 
     def setup_qt_frame(self):
         # create the frame
