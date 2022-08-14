@@ -36,10 +36,9 @@ def calculate_densities(points):
 
     return [len(i) for i in neighbors]
 
-def calculate_positions(sat_data):
+def calculate_positions(sat_data, dt=datetime.now()):
     sat_pos_list = []
 
-    dt = datetime.now()
     jd, fr = jday_datetime(dt)
     errs = 0
 

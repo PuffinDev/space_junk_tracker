@@ -4,6 +4,7 @@ from pyvistaqt import QtInteractor, MainWindow, BackgroundPlotter
 from math import pi, atan2, asin
 from functools import partial
 from qtpy import QtWidgets
+from datetime import datetime
 from .utils import StoppableThread, calculate_densities, get_sat_data, calculate_positions, load_tle_datasets_from_file, RADIUS, KM
 import time
 import os
@@ -15,6 +16,7 @@ class App(MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.datasets = load_tle_datasets_from_file()
+        self.live = True
         self.dataset_name = list(self.datasets.keys())[0]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
@@ -45,7 +47,9 @@ class App(MainWindow):
         while True:
             if self.position_update_thread.stopped:
                 break
-            self.positions = calculate_positions(self.sat_data)
+
+            dt = datetime.now() if self.live else datetime.fromtimestamp(self.unix_time)
+            self.positions = calculate_positions(self.sat_data, dt=dt)
             self.point_cloud.points = self.positions
 
     def density_update(self):
@@ -69,6 +73,12 @@ class App(MainWindow):
             print(f"Error: dataset \"{self.dataset_name}\" is empty or could not be loaded.")
             print("Reverting to previous dataset...")
             self.change_dataset(prev_dataset)
+    
+    def set_time(self):
+        text, ok = QtWidgets.QInputDialog.getText(self, 'Input Dialog', 'Enter unix time:')
+        if ok:
+            self.live = False
+            self.unix_time = float(text)
 
     def stop_threads(self):
         if hasattr(self, 'update_thread') and hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
@@ -101,7 +111,8 @@ class App(MainWindow):
         self.signal_close.connect(self.plotter.close)
         self.frame.setLayout(vlayout)
         self.setCentralWidget(self.frame)
-        self.build_menus() # not working atm
+        self.build_menus()
+        self.dateedit = QtWidgets.QDateEdit(calendarPopup=True)
 
     def build_menus(self):
         # simple menu to demo functions
@@ -116,6 +127,13 @@ class App(MainWindow):
             change_dataset_button = QtWidgets.QAction(dataset_name, self)
             change_dataset_button.triggered.connect(partial(self.change_dataset, dataset_name))
             dataset_menu.addAction(change_dataset_button)
+        
+        time_menu = main_menu.addMenu("Time")
+        set_time = QtWidgets.QAction('Set time', self)
+        set_time.setShortcut('Ctrl+T')
+        set_time.triggered.connect(self.set_time)
+        time_menu.addAction(set_time)
+        
 
     def setup_earth(self):
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
