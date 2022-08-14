@@ -79,6 +79,9 @@ class App(MainWindow):
         if ok:
             self.live = False
             self.unix_time = float(text)
+    
+    def live_time(self):
+        self.live = True
 
     def stop_threads(self):
         if hasattr(self, 'update_thread') and hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
@@ -132,7 +135,11 @@ class App(MainWindow):
         set_time = QtWidgets.QAction('Set time', self)
         set_time.setShortcut('Ctrl+T')
         set_time.triggered.connect(self.set_time)
+        live = QtWidgets.QAction('Live', self)
+        live.setShortcut('Ctrl+L')
+        live.triggered.connect(self.live_time)
         time_menu.addAction(set_time)
+        time_menu.addAction(live)
         
 
     def setup_earth(self):
