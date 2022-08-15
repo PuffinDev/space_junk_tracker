@@ -17,6 +17,7 @@ class App(MainWindow):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.datasets = load_tle_datasets_from_file()
         self.live = True
+        self.offset = 0
         self.dataset_name = list(self.datasets.keys())[0]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
@@ -49,7 +50,7 @@ class App(MainWindow):
                 break
 
             dt = datetime.now() if self.live else datetime.fromtimestamp(self.unix_time)
-            self.positions = calculate_positions(self.sat_data, dt=dt)
+            self.positions = calculate_positions(self.sat_data, offset=self.offset)
             self.point_cloud.points = self.positions
 
     def density_update(self):
@@ -77,11 +78,10 @@ class App(MainWindow):
     def set_time(self):
         text, ok = QtWidgets.QInputDialog.getText(self, 'Input Dialog', 'Enter unix time:')
         if ok:
-            self.live = False
-            self.unix_time = float(text)
+            self.offset = float(text) - time.time()
     
     def live_time(self):
-        self.live = True
+        self.offset = 0
 
     def stop_threads(self):
         if hasattr(self, 'update_thread') and hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
@@ -95,9 +95,9 @@ class App(MainWindow):
     def initalise_data_set(self):
         self.sat_data = get_sat_data(self.dataset)
         if len(self.sat_data) < 1:
-            return False
+            return Falses
 
-        self.positions = calculate_positions(self.sat_data)
+        self.positions = calculate_positions(self.sat_data, offset=self.offset)
         self.point_cloud = pv.PolyData(self.positions) # create point cloud
         self.densities = calculate_densities(self.point_cloud.points)
         self.point_cloud['Density'] = self.densities
