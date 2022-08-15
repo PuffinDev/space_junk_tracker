@@ -3,7 +3,7 @@ import pyvista as pv
 from pyvistaqt import QtInteractor, MainWindow, BackgroundPlotter
 from math import pi, atan2, asin
 from functools import partial
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QtCore
 from datetime import datetime
 from .utils import StoppableThread, calculate_densities, get_sat_data, calculate_positions, load_tle_datasets_from_file, RADIUS, KM
 import time
@@ -76,10 +76,14 @@ class App(MainWindow):
             self.change_dataset(prev_dataset)
     
     def set_time(self):
-        text, ok = QtWidgets.QInputDialog.getText(self, 'Input Dialog', 'Enter unix time:')
-        if ok:
-            self.offset = float(text) - time.time()
-    
+        qtime = self.dateedit.date()
+        print(qtime)
+        dt = datetime(year=qtime.year(), month=qtime.month(), day=qtime.day())
+        unixtime = time.mktime(dt.timetuple())
+        print(unixtime)
+        self.offset = unixtime - time.time()
+        print(self.offset)
+
     def live_time(self):
         self.offset = 0
 
@@ -140,6 +144,10 @@ class App(MainWindow):
         live.triggered.connect(self.live_time)
         time_menu.addAction(set_time)
         time_menu.addAction(live)
+
+        self.dateedit = QtWidgets.QDateEdit(calendarPopup=True)
+        self.menuBar().setCornerWidget(self.dateedit, QtCore.Qt.TopRightCorner)
+        self.dateedit.setDateTime(QtCore.QDateTime.currentDateTime())
         
 
     def setup_earth(self):
