@@ -23,10 +23,13 @@ hours = {
     '12/8': 5, # Friday
     '13/8': 2, # Saturday
     '14/8': 2, # Sunday
+
+    '15/8': 5, # Monday
 }
 
 hours_so_far = sum(hours.values())
 print(f"Hours: {hours_so_far}")
+print(f"Hours to go: {total_hours-hours_so_far}")
 print(f"{round((hours_so_far/total_hours)*100)}% complete")
 bar = "-"*10
 for i, char in enumerate(bar):
