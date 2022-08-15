@@ -17,6 +17,12 @@ hours = {
     '6/8': 0, # Saturday
     '7/8': 1.3, # Sunday
     '8/8': 5, # Monday
+    '9/8': 5, # Tuesday
+    '10/8': 5, # Wednesday
+    '11/8': 5, # Thursday
+    '12/8': 5, # Friday
+    '13/8': 2, # Saturday
+    '14/8': 2, # Sunday
 }
 
 hours_so_far = sum(hours.values())
