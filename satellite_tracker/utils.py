@@ -8,8 +8,9 @@ from sgp4.conveniences import jday_datetime
 from datetime import datetime
 import scipy.spatial as spatial
 from json import load
-import os
 from dotenv import load_dotenv
+import time
+import os
 
 load_dotenv()
 
@@ -36,10 +37,10 @@ def calculate_densities(points):
 
     return [len(i) for i in neighbors]
 
-def calculate_positions(sat_data):
+def calculate_positions(sat_data, offset=0):
     sat_pos_list = []
 
-    dt = datetime.now()
+    dt = datetime.fromtimestamp(time.time() + offset)
     jd, fr = jday_datetime(dt)
     errs = 0
 

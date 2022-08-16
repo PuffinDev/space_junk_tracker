@@ -3,7 +3,8 @@ import pyvista as pv
 from pyvistaqt import QtInteractor, MainWindow, BackgroundPlotter
 from math import pi, atan2, asin
 from functools import partial
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QtCore
+from datetime import datetime
 from .utils import StoppableThread, calculate_densities, get_sat_data, calculate_positions, load_tle_datasets_from_file, RADIUS, KM
 import time
 import os
@@ -15,6 +16,9 @@ class App(MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.datasets = load_tle_datasets_from_file()
+        self.live = True
+        self.offset = 0
+        self.positions_changed = False
         self.dataset_name = list(self.datasets.keys())[0]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
@@ -45,17 +49,24 @@ class App(MainWindow):
         while True:
             if self.position_update_thread.stopped:
                 break
-            self.positions = calculate_positions(self.sat_data)
+
+            dt = datetime.now() if self.live else datetime.fromtimestamp(self.unix_time)
+            self.positions = calculate_positions(self.sat_data, offset=self.offset)
             self.point_cloud.points = self.positions
 
     def density_update(self):
         while True:
-            if self.density_update_thread.stopped:
-                break
-
             self.densities = calculate_densities(self.point_cloud.points)
             self.point_cloud['Density'][:] = self.densities
-            time.sleep(5)
+
+            for i in range(16):
+                if self.density_update_thread.stopped:
+                    return
+                if self.positions_changed:
+                    self.positions_changed = False
+                    break
+
+                time.sleep(0.5)
 
     def change_dataset(self, dataset_name):
         self.stop_threads()
@@ -69,6 +80,26 @@ class App(MainWindow):
             print(f"Error: dataset \"{self.dataset_name}\" is empty or could not be loaded.")
             print("Reverting to previous dataset...")
             self.change_dataset(prev_dataset)
+    
+    def set_time(self, value):
+        if value == 0:
+            self.offset = 0
+            return
+
+        offset = round(value*60, 3)
+        if len(calculate_positions(self.sat_data, offset)) == len(calculate_positions(self.sat_data, self.offset)):
+            self.offset = offset
+            self.positions_changed = True
+        else:
+            self.stop_threads()
+            self.plotter.remove_actor(self.sat_mesh)
+            self.offset = offset
+            self.initalise_data_set()
+            self.start_threads()
+
+    def live_time(self):
+        self.slider.GetRepresentation().SetValue(0.0)
+        self.set_time(0)
 
     def stop_threads(self):
         if hasattr(self, 'update_thread') and hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
@@ -82,9 +113,9 @@ class App(MainWindow):
     def initalise_data_set(self):
         self.sat_data = get_sat_data(self.dataset)
         if len(self.sat_data) < 1:
-            return False
+            return Falses
 
-        self.positions = calculate_positions(self.sat_data)
+        self.positions = calculate_positions(self.sat_data, offset=self.offset)
         self.point_cloud = pv.PolyData(self.positions) # create point cloud
         self.densities = calculate_densities(self.point_cloud.points)
         self.point_cloud['Density'] = self.densities
@@ -101,7 +132,7 @@ class App(MainWindow):
         self.signal_close.connect(self.plotter.close)
         self.frame.setLayout(vlayout)
         self.setCentralWidget(self.frame)
-        self.build_menus() # not working atm
+        self.build_menus()
 
     def build_menus(self):
         # simple menu to demo functions
@@ -116,6 +147,12 @@ class App(MainWindow):
             change_dataset_button = QtWidgets.QAction(dataset_name, self)
             change_dataset_button.triggered.connect(partial(self.change_dataset, dataset_name))
             dataset_menu.addAction(change_dataset_button)
+        
+        time_menu = main_menu.addMenu("Time")
+        live = QtWidgets.QAction('Live', self)
+        live.setShortcut('Ctrl+L')
+        live.triggered.connect(self.live_time)
+        time_menu.addAction(live)
 
     def setup_earth(self):
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
@@ -138,3 +175,5 @@ class App(MainWindow):
         self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
         self.plotter.add_actor(cubemap.to_skybox())
         self.plotter.set_environment_texture(cubemap, True)
+        self.slider = self.plotter.add_slider_widget(self.set_time, [-120, 120], title='Time offset (m)')
+        self.slider.GetRepresentation().SetLabelFormat('%0.2f')
