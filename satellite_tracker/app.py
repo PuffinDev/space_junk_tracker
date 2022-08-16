@@ -76,13 +76,16 @@ class App(MainWindow):
             self.change_dataset(prev_dataset)
     
     def set_time(self):
+        self.stop_threads()
+        self.plotter.remove_actor(self.sat_mesh)
+
         qtime = self.dateedit.date()
-        print(qtime)
         dt = datetime(year=qtime.year(), month=qtime.month(), day=qtime.day())
         unixtime = time.mktime(dt.timetuple())
-        print(unixtime)
         self.offset = unixtime - time.time()
-        print(self.offset)
+
+        self.initalise_data_set()
+        self.start_threads()
 
     def live_time(self):
         self.offset = 0
@@ -119,7 +122,6 @@ class App(MainWindow):
         self.frame.setLayout(vlayout)
         self.setCentralWidget(self.frame)
         self.build_menus()
-        self.dateedit = QtWidgets.QDateEdit(calendarPopup=True)
 
     def build_menus(self):
         # simple menu to demo functions
@@ -148,7 +150,6 @@ class App(MainWindow):
         self.dateedit = QtWidgets.QDateEdit(calendarPopup=True)
         self.menuBar().setCornerWidget(self.dateedit, QtCore.Qt.TopRightCorner)
         self.dateedit.setDateTime(QtCore.QDateTime.currentDateTime())
-        
 
     def setup_earth(self):
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
