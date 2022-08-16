@@ -86,7 +86,11 @@ class App(MainWindow):
             self.offset = 0
             return
 
-        offset = round(value*60, 3)
+        if self.slider_mode == "hours":
+            offset = round(value*60*60, 3)
+        elif self.slider_mode == "mins":
+            offset = round(value*60, 3)
+
         if len(calculate_positions(self.sat_data, offset)) == len(calculate_positions(self.sat_data, self.offset)):
             self.offset = offset
             self.positions_changed = True
@@ -100,6 +104,18 @@ class App(MainWindow):
     def live_time(self):
         self.slider.GetRepresentation().SetValue(0.0)
         self.set_time(0)
+
+    def set_slider_mins(self):
+        self.slider.GetRepresentation().SetMinimumValue(-120)
+        self.slider.GetRepresentation().SetMaximumValue(120)
+        self.slider.GetRepresentation().SetTitleText("Time offset (mins)")
+        self.slider_mode = "mins"
+
+    def set_slider_hours(self):
+        self.slider.GetRepresentation().SetMinimumValue(-96)
+        self.slider.GetRepresentation().SetMaximumValue(96)
+        self.slider.GetRepresentation().SetTitleText("Time offset (hours)")
+        self.slider_mode = "hours"
 
     def stop_threads(self):
         if hasattr(self, 'update_thread') and hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
@@ -154,6 +170,16 @@ class App(MainWindow):
         live.triggered.connect(self.live_time)
         time_menu.addAction(live)
 
+        slider_menu = main_menu.addMenu("Slider")
+        hours = QtWidgets.QAction('Hours', self)
+        hours.setShortcut('Ctrl+H')
+        hours.triggered.connect(self.set_slider_hours)
+        slider_menu.addAction(hours)
+        mins = QtWidgets.QAction('Minutes', self)
+        mins.setShortcut('Ctrl+M')
+        mins.triggered.connect(self.set_slider_mins)
+        slider_menu.addAction(mins)
+
     def setup_earth(self):
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
         temp_globe.t_coords = np.zeros((temp_globe.points.shape[0], 2))
@@ -175,5 +201,6 @@ class App(MainWindow):
         self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
         self.plotter.add_actor(cubemap.to_skybox())
         self.plotter.set_environment_texture(cubemap, True)
-        self.slider = self.plotter.add_slider_widget(self.set_time, [-120, 120], title='Time offset (m)')
+        self.slider = self.plotter.add_slider_widget(self.set_time, [-120, 120], title='Time offset (mins)')
         self.slider.GetRepresentation().SetLabelFormat('%0.2f')
+        self.slider_mode = "mins"
