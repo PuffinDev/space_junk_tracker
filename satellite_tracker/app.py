@@ -78,7 +78,7 @@ class App(MainWindow):
     
     def set_time(self, value):
         if value == 0:
-            self.live_time()
+            self.offset = 0
             return
 
         offset = round(value*60, 3)
@@ -92,7 +92,8 @@ class App(MainWindow):
             self.start_threads()
 
     def live_time(self):
-        self.offset = 0
+        self.slider.GetRepresentation().SetValue(0.0)
+        self.set_time(0)
 
     def stop_threads(self):
         if hasattr(self, 'update_thread') and hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
