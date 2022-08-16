@@ -143,13 +143,9 @@ class App(MainWindow):
             dataset_menu.addAction(change_dataset_button)
         
         time_menu = main_menu.addMenu("Time")
-        set_time = QtWidgets.QAction('Set time', self)
-        set_time.setShortcut('Ctrl+T')
-        set_time.triggered.connect(self.set_time)
         live = QtWidgets.QAction('Live', self)
         live.setShortcut('Ctrl+L')
         live.triggered.connect(self.live_time)
-        time_menu.addAction(set_time)
         time_menu.addAction(live)
 
     def setup_earth(self):
