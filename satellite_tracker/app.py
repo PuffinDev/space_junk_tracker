@@ -60,6 +60,7 @@ class App(MainWindow):
 
             self.densities = calculate_densities(self.point_cloud.points)
             self.point_cloud['Density'][:] = self.densities
+
             time.sleep(5)
 
     def change_dataset(self, dataset_name):
@@ -75,17 +76,20 @@ class App(MainWindow):
             print("Reverting to previous dataset...")
             self.change_dataset(prev_dataset)
     
-    def set_time(self):
-        self.stop_threads()
-        self.plotter.remove_actor(self.sat_mesh)
+    def set_time(self, value):
+        if value == 0:
+            self.live_time()
+            return
 
-        qtime = self.dateedit.date()
-        dt = datetime(year=qtime.year(), month=qtime.month(), day=qtime.day())
-        unixtime = time.mktime(dt.timetuple())
-        self.offset = unixtime - time.time()
-
-        self.initalise_data_set()
-        self.start_threads()
+        offset = round(value*60, 3)
+        if len(calculate_positions(self.sat_data, offset)) == len(calculate_positions(self.sat_data, self.offset)):
+            self.offset = offset
+        else:
+            self.stop_threads()
+            self.plotter.remove_actor(self.sat_mesh)
+            self.offset = offset
+            self.initalise_data_set()
+            self.start_threads()
 
     def live_time(self):
         self.offset = 0
@@ -147,10 +151,6 @@ class App(MainWindow):
         time_menu.addAction(set_time)
         time_menu.addAction(live)
 
-        self.dateedit = QtWidgets.QDateEdit(calendarPopup=True)
-        self.menuBar().setCornerWidget(self.dateedit, QtCore.Qt.TopRightCorner)
-        self.dateedit.setDateTime(QtCore.QDateTime.currentDateTime())
-
     def setup_earth(self):
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
         temp_globe.t_coords = np.zeros((temp_globe.points.shape[0], 2))
@@ -172,3 +172,5 @@ class App(MainWindow):
         self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
         self.plotter.add_actor(cubemap.to_skybox())
         self.plotter.set_environment_texture(cubemap, True)
+        self.slider = self.plotter.add_slider_widget(self.set_time, [-120, 120], title='Time offset (m)')
+        self.slider.GetRepresentation().SetLabelFormat('%0.2f')
