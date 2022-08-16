@@ -18,6 +18,7 @@ class App(MainWindow):
         self.datasets = load_tle_datasets_from_file()
         self.live = True
         self.offset = 0
+        self.positions_changed = False
         self.dataset_name = list(self.datasets.keys())[0]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
@@ -55,13 +56,17 @@ class App(MainWindow):
 
     def density_update(self):
         while True:
-            if self.density_update_thread.stopped:
-                break
-
             self.densities = calculate_densities(self.point_cloud.points)
             self.point_cloud['Density'][:] = self.densities
 
-            time.sleep(5)
+            for i in range(16):
+                if self.density_update_thread.stopped:
+                    return
+                if self.positions_changed:
+                    self.positions_changed = False
+                    break
+
+                time.sleep(0.5)
 
     def change_dataset(self, dataset_name):
         self.stop_threads()
@@ -84,6 +89,7 @@ class App(MainWindow):
         offset = round(value*60, 3)
         if len(calculate_positions(self.sat_data, offset)) == len(calculate_positions(self.sat_data, self.offset)):
             self.offset = offset
+            self.positions_changed = True
         else:
             self.stop_threads()
             self.plotter.remove_actor(self.sat_mesh)
