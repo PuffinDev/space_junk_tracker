@@ -18,6 +18,7 @@ RADIUS = 1 # radius of the self.globe in visualisation - RAD is a unit of measur
 KM = (RADIUS*2)/12742 # kilometer scalar
 TLE_DATASETS_FILE = "resources/tle_datasets.json"
 
+#  custom thread with stop event
 class StoppableThread(Thread):
     def __init__(self,  *args, **kwargs):
         super(StoppableThread, self).__init__(*args, **kwargs)
@@ -31,6 +32,7 @@ class StoppableThread(Thread):
         return self._stop_event.is_set()
 
 def calculate_densities(points):
+    # calculates how many other satellites are within 1000 KM
     points = np.array(points)
     tree = spatial.KDTree(np.array(points))
     neighbors = tree.query_ball_tree(tree, KM*1000)
@@ -40,15 +42,16 @@ def calculate_densities(points):
 def calculate_positions(sat_data, offset=0):
     sat_pos_list = []
 
+    # calculate julian date from datetime and offset
     dt = datetime.fromtimestamp(time.time() + offset)
     jd, fr = jday_datetime(dt)
     errs = 0
 
     for i, satellite in enumerate(sat_data):
-        sat = Satrec.twoline2rv(satellite[1], satellite[2]) # Load tle data
-        e, r, _ = sat.sgp4(jd, fr) # calculate earth-centered inertial position
-        if e == 0 and r[0]*KM < 1000 and r[1]*KM < 1000 and r[2]*KM < 1000: # check for errors or anomalous results
-            sat_pos_list.append([r[0]*KM, r[1]*KM, r[2]*KM]) # set position of the point
+        sat = Satrec.twoline2rv(satellite[1], satellite[2])  # load tle data
+        e, r, _ = sat.sgp4(jd, fr)  # calculate earth-centered inertial position
+        if e == 0 and r[0]*KM < 1000 and r[1]*KM < 1000 and r[2]*KM < 1000:  # check for errors or anomalous results
+            sat_pos_list.append([r[0]*KM, r[1]*KM, r[2]*KM])  # set position of the point
         else:
             errs += 1
 
@@ -68,12 +71,15 @@ def split_tle(list_a, chunk_size):
         yield list_a[i:i + chunk_size]
 
 def get_spacetrack_sat_data(url):
+    # loads tle data from space-track.org with login details in ".env" file
+
     credentials = {"identity": os.getenv("EMAIL"), "password": os.getenv("PASSWORD")}
 
     with Session() as session:
+        # post credentials
         resp = session.post("https://www.space-track.org/ajaxauth/login", data=credentials)
 
-        # this query picks up all Starlink satellites from the catalog. Note - a 401 failure shows you have bad credentials 
+        # rertive tle data
         resp = session.get(url)
         if resp.status_code == 401:
             print("Could not get data from space-track.org. Please make sure you have an account and have filled out the .env file.")
@@ -81,6 +87,8 @@ def get_spacetrack_sat_data(url):
         return resp
 
 def get_sat_data(url_list):
+    # retrives tle data and returns a list of lists
+
     urls = url_list
     tle_text = ""
 
@@ -90,6 +98,7 @@ def get_sat_data(url_list):
         if not "space-track.org" in u:
             rs.append(grequests.get(u))
         else:
+            # if the url is space-track, handle it with get_spacetrack_sat_data
             spacetrack_urls.append(u)
 
     responses = grequests.map(rs)
@@ -109,6 +118,7 @@ def get_sat_data(url_list):
 
     for sat in sat_data:
         if len(sat) != 3 or len(sat[2]) < 3:
+            # remove incomplete tle sets
             sat_data.remove(sat)
 
     cat_nums = set()
@@ -117,6 +127,7 @@ def get_sat_data(url_list):
         cat_num = parse_tle(sat)["cat_num"]
 
         if cat_num in cat_nums:
+            # remove duplicates
             sat_data.remove(sat)
         else:
             cat_nums.add(cat_num)

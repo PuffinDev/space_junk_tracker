@@ -12,16 +12,16 @@ os.environ["QT_API"] = "pyqt5"
 
 PLANET_TEXTURE = "resources/earth2k.jpg"
 
+# main class inherits pyvistaqt.MainWindow
 class App(MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
-        self.datasets = load_tle_datasets_from_file()
-        self.live = True
-        self.offset = 0
+        self.datasets = load_tle_datasets_from_file()  # 2d list of urls to get tle data from
+        self.offset = 0  # time offset in secs
         self.positions_changed = False
         self.dataset_name = list(self.datasets.keys())[0]
         self.setup_qt_frame()
-        self.setup_plotter(self.setup_earth()) # add point cloud as mesh, background image, central globe, camera starting pos
+        self.setup_plotter(self.setup_earth())  # add point cloud as mesh, background image, central globe, camera starting pos
         if self.initalise_data_set():
             self.start_threads()
         else:
@@ -30,6 +30,7 @@ class App(MainWindow):
 
     @property
     def dataset(self):
+        # returns the current dataset
         return self.datasets[self.dataset_name]
 
     def start_threads(self):
@@ -37,28 +38,31 @@ class App(MainWindow):
         self.position_update_thread.start()
         self.density_update_thread = StoppableThread(target=self.density_update, daemon=True)
         self.density_update_thread.start()
-        self.update_thread = StoppableThread(target=self.update, daemon=True)
-        self.update_thread.start()
-
-    def update(self):
-        if self.update_thread.stopped:
-            return
-        self.plotter.update()
+    
+    def stop_threads(self):
+        if hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
+            self.position_update_thread.stop()
+            self.position_update_thread.join()
+            self.density_update_thread.stop()
+            self.density_update_thread.join()
 
     def position_update(self):
         while True:
             if self.position_update_thread.stopped:
                 break
 
-            dt = datetime.now() if self.live else datetime.fromtimestamp(self.unix_time)
+            # calculate positions with sgp4 from the tle data
             self.positions = calculate_positions(self.sat_data, offset=self.offset)
+            # update point cloud
             self.point_cloud.points = self.positions
 
     def density_update(self):
         while True:
+            # calculate densities and update the point cloudsss
             self.densities = calculate_densities(self.point_cloud.points)
             self.point_cloud['Density'][:] = self.densities
 
+            # sleep for 8s but continously check stop events
             for i in range(16):
                 if self.density_update_thread.stopped:
                     return
@@ -69,8 +73,9 @@ class App(MainWindow):
                 time.sleep(0.5)
 
     def change_dataset(self, dataset_name):
-        self.stop_threads()
+        # loads a new dataset and re-inits plotter and threads
 
+        self.stop_threads()
         prev_dataset = self.dataset_name
         self.dataset_name = dataset_name
         self.plotter.remove_actor(self.sat_mesh)
@@ -81,7 +86,9 @@ class App(MainWindow):
             print("Reverting to previous dataset...")
             self.change_dataset(prev_dataset)
     
-    def set_time(self, value):
+    def set_offset(self, value):
+        #offsets time by specified amount
+
         if value == 0:
             self.offset = 0
             return
@@ -95,6 +102,7 @@ class App(MainWindow):
             self.offset = offset
             self.positions_changed = True
         else:
+            # if the amount of points has changed, the mesh needs to be re-initialised
             self.stop_threads()
             self.plotter.remove_actor(self.sat_mesh)
             self.offset = offset
@@ -103,7 +111,7 @@ class App(MainWindow):
 
     def live_time(self):
         self.slider.GetRepresentation().SetValue(0.0)
-        self.set_time(0)
+        self.set_offset(0)
 
     def set_slider_mins(self):
         self.slider.GetRepresentation().SetMinimumValue(-120)
@@ -117,16 +125,8 @@ class App(MainWindow):
         self.slider.GetRepresentation().SetTitleText("Time offset (hours)")
         self.slider_mode = "hours"
 
-    def stop_threads(self):
-        if hasattr(self, 'update_thread') and hasattr(self, 'position_update_thread') and hasattr(self, 'density_update_thread'):
-            self.position_update_thread.stop()
-            self.position_update_thread.join()
-            self.density_update_thread.stop()
-            self.density_update_thread.join()
-            self.update_thread.stop()
-            self.update_thread.join()
-
     def initalise_data_set(self):
+        # load and display a new dataset
         self.sat_data = get_sat_data(self.dataset)
         if len(self.sat_data) < 1:
             return Falses
@@ -139,19 +139,16 @@ class App(MainWindow):
         return True
 
     def setup_qt_frame(self):
-        # create the frame
-        self.frame = QtWidgets.QFrame()
+        self.frame = QtWidgets.QFrame()  # create a qt frame for plotter
         vlayout = QtWidgets.QVBoxLayout()
-        # add the pyvista interactor object
         self.plotter = QtInteractor(self.frame)
-        vlayout.addWidget(self.plotter.interactor)
+        vlayout.addWidget(self.plotter.interactor)  # add the pyvista plotter to qt frame
         self.signal_close.connect(self.plotter.close)
         self.frame.setLayout(vlayout)
         self.setCentralWidget(self.frame)
         self.build_menus()
 
     def build_menus(self):
-        # simple menu to demo functions
         main_menu = self.menuBar()
         file_menu = main_menu.addMenu('File')
         exit_button = QtWidgets.QAction('Exit', self)
@@ -181,6 +178,7 @@ class App(MainWindow):
         slider_menu.addAction(mins)
 
     def setup_earth(self):
+        # create a sphere mesh and wrap the earth texture
         temp_globe = pv.Sphere(radius=RADIUS, theta_resolution=120, phi_resolution=120, start_theta=270.001, end_theta=270)
         temp_globe.t_coords = np.zeros((temp_globe.points.shape[0], 2))
         for i in range(temp_globe.points.shape[0]):
@@ -201,6 +199,6 @@ class App(MainWindow):
         self.plotter.camera.focal_point = (0.0, 0.0, 0.0)
         self.plotter.add_actor(cubemap.to_skybox())
         self.plotter.set_environment_texture(cubemap, True)
-        self.slider = self.plotter.add_slider_widget(self.set_time, [-120, 120], title='Time offset (mins)')
+        self.slider = self.plotter.add_slider_widget(self.set_offset, [-120, 120], title='Time offset (mins)')
         self.slider.GetRepresentation().SetLabelFormat('%0.2f')
         self.slider_mode = "mins"
