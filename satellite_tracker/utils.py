@@ -114,7 +114,7 @@ def get_sat_data(url_list):
     cat_nums = set()
 
     for sat in sat_data:
-        cat_num = list(filter(('').__ne__, sat[1].split(" ")))[1]
+        cat_num = parse_tle(sat)["cat_num"]
 
         if cat_num in cat_nums:
             sat_data.remove(sat)
@@ -122,6 +122,16 @@ def get_sat_data(url_list):
             cat_nums.add(cat_num)
 
     return sat_data
+
+def parse_tle(tle):
+    ln0 = tle[0]
+    ln1 = list(filter(('').__ne__, tle[1].split(" ")))
+    ln2 = list(filter(('').__ne__, tle[2].split(" ")))
+    return {
+        "cat_num": ln1[1],
+        "name": ln0,
+        "debris": "DEB" in ln0
+    }
 
 def load_tle_datasets_from_file():
     with open(TLE_DATASETS_FILE) as f:
