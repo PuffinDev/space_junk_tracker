@@ -57,6 +57,21 @@ def calculate_positions(sat_data, offset=0):
 
     return sat_pos_list
 
+def filter_sat_data(sat_data, offset=0):
+    filtered = []
+
+    dt = datetime.fromtimestamp(time.time() + offset)
+    jd, fr = jday_datetime(dt)
+    errs = 0
+
+    for i, satellite in enumerate(sat_data):
+        sat = Satrec.twoline2rv(satellite[1], satellite[2])  # load tle data
+        e, r, _ = sat.sgp4(jd, fr)  # calculate earth-centered inertial position
+        if e == 0:
+            filtered.append(satellite)
+    
+    return filtered
+
 def calculate_dist(point1, point2):
     x, y, z = point1
     a, b, c = point2
