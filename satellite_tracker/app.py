@@ -5,7 +5,11 @@ from math import pi, atan2, asin
 from functools import partial
 from qtpy import QtWidgets, QtCore
 from datetime import datetime
-from .utils import StoppableThread, calculate_densities, get_sat_data, calculate_positions, load_tle_datasets_from_file, RADIUS, KM
+from .utils import (
+    StoppableThread, calculate_densities, get_sat_data,
+    calculate_positions, load_tle_datasets_from_file,
+    parse_tle, filter_sat_data, RADIUS
+)
 import time
 import os
 os.environ["QT_API"] = "pyqt5"
@@ -19,6 +23,7 @@ class App(MainWindow):
         self.datasets = load_tle_datasets_from_file()  # 2d list of urls to get tle data from
         self.offset = 0  # time offset in secs
         self.positions_changed = False
+        self.color_mode = "density"
         self.dataset_name = list(self.datasets.keys())[0]
         self.setup_qt_frame()
         self.setup_plotter(self.setup_earth())  # add point cloud as mesh, background image, central globe, camera starting pos
@@ -57,6 +62,8 @@ class App(MainWindow):
             self.point_cloud.points = self.positions
 
     def density_update(self):
+        if self.color_mode != "density":
+            return
         while True:
             # calculate densities and update the point cloudsss
             self.densities = calculate_densities(self.point_cloud.points)
@@ -124,18 +131,37 @@ class App(MainWindow):
         self.slider.GetRepresentation().SetMaximumValue(96)
         self.slider.GetRepresentation().SetTitleText("Time offset (hours)")
         self.slider_mode = "hours"
+    
+    def set_color_mode(self, mode):
+        self.color_mode = mode
+        self.stop_threads()
+        self.plotter.remove_actor(self.sat_mesh)
+        self.initalise_data_set()
+        self.start_threads()
 
     def initalise_data_set(self):
         # load and display a new dataset
         self.sat_data = get_sat_data(self.dataset)
         if len(self.sat_data) < 1:
-            return Falses
+            return False
 
         self.positions = calculate_positions(self.sat_data, offset=self.offset)
         self.point_cloud = pv.PolyData(self.positions) # create point cloud
-        self.densities = calculate_densities(self.point_cloud.points)
-        self.point_cloud['Density'] = self.densities
-        self.sat_mesh = self.plotter.add_mesh(self.point_cloud, clim=(0, max(self.densities)), colormap="rainbow")
+
+        if self.color_mode == "density":
+            self.densities = calculate_densities(self.point_cloud.points)
+            self.point_cloud['Density'] = self.densities
+        elif self.color_mode == "debris":
+            debris_list = []
+            for sat in filter_sat_data(self.sat_data, offset=self.offset):
+                if parse_tle(sat)["debris"]:
+                    debris_list.append(0)
+                else:
+                    debris_list.append(1)
+            
+            self.point_cloud['    Debris / Not Debris'] = debris_list
+
+        self.sat_mesh = self.plotter.add_mesh(self.point_cloud, colormap="rainbow", categories=True)
         return True
 
     def setup_qt_frame(self):
@@ -176,6 +202,16 @@ class App(MainWindow):
         mins.setShortcut('Ctrl+M')
         mins.triggered.connect(self.set_slider_mins)
         slider_menu.addAction(mins)
+
+        scalar_menu = main_menu.addMenu("Scalar")
+        density_button = QtWidgets.QAction('Density', self)
+        density_button.setShortcut('Ctrl+D')
+        density_button.triggered.connect(lambda: self.set_color_mode("density"))
+        scalar_menu.addAction(density_button)
+        type_button = QtWidgets.QAction('Type', self)
+        type_button.setShortcut('Ctrl+E')
+        type_button.triggered.connect(lambda: self.set_color_mode("debris"))
+        scalar_menu.addAction(type_button)
 
     def setup_earth(self):
         # create a sphere mesh and wrap the earth texture
